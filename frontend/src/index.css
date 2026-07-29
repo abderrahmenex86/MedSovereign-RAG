@@ -1,0 +1,63 @@
+@import 'tailwindcss';
+
+@theme {
+    --color-space-indigo-50: oklch(95.66% 0.007 286.27);
+    --color-space-indigo-100: oklch(91.19% 0.014 281.55);
+    --color-space-indigo-200: oklch(82.18% 0.028 281.22);
+    --color-space-indigo-300: oklch(72.96% 0.043 280.76);
+    --color-space-indigo-400: oklch(63.52% 0.058 281.16);
+    --color-space-indigo-500: oklch(53.77% 0.077 279.89);
+    --color-space-indigo-600: oklch(45.99% 0.063 280.2);
+    --color-space-indigo-700: oklch(37.83% 0.051 279.24);
+    --color-space-indigo-800: oklch(29.24% 0.037 279.47);
+    --color-space-indigo-900: oklch(19.96% 0.02 279.96);
+    --color-space-indigo-950: oklch(17.08% 0.015 278.37);
+
+    --color-lavender-grey-50: oklch(96.02% 0.003 247.86);
+    --color-lavender-grey-100: oklch(91.83% 0.009 264.52);
+    --color-lavender-grey-200: oklch(83.69% 0.017 259.42);
+    --color-lavender-grey-300: oklch(75.16% 0.027 261.13);
+    --color-lavender-grey-400: oklch(66.44% 0.036 262.62);
+    --color-lavender-grey-500: oklch(57.65% 0.046 260.84);
+    --color-lavender-grey-600: oklch(49.09% 0.038 262.49);
+    --color-lavender-grey-700: oklch(40.34% 0.032 261);
+    --color-lavender-grey-800: oklch(31.12% 0.022 259.38);
+    --color-lavender-grey-900: oklch(20.86% 0.013 264.25);
+    --color-lavender-grey-950: oklch(17.73% 0.009 264.32);
+
+    --color-platinum-50: oklch(96.37% 0.006 211.04);
+    --color-platinum-100: oklch(92.53% 0.011 225.99);
+    --color-platinum-200: oklch(84.99% 0.021 224.34);
+    --color-platinum-300: oklch(77.29% 0.032 225.24);
+    --color-platinum-400: oklch(69.72% 0.043 222.57);
+    --color-platinum-500: oklch(61.78% 0.054 224.08);
+    --color-platinum-600: oklch(52.71% 0.045 223.09);
+    --color-platinum-700: oklch(42.94% 0.036 226.13);
+    --color-platinum-800: oklch(32.89% 0.025 225.29);
+    --color-platinum-900: oklch(21.95% 0.015 226.96);
+    --color-platinum-950: oklch(18.59% 0.01 220.1);
+
+    --color-punch-red-50: oklch(94.65% 0.024 8.17);
+    --color-punch-red-100: oklch(89.57% 0.049 10.22);
+    --color-punch-red-200: oklch(79.6% 0.105 12.32);
+    --color-punch-red-300: oklch(70.82% 0.161 15.08);
+    --color-punch-red-400: oklch(64.03% 0.211 19.22);
+    --color-punch-red-500: oklch(60.01% 0.238 25.06);
+    --color-punch-red-600: oklch(50.93% 0.2 24.54);
+    --color-punch-red-700: oklch(41.26% 0.16 24.05);
+    --color-punch-red-800: oklch(31.18% 0.118 23.02);
+    --color-punch-red-900: oklch(20.1% 0.07 18.79);
+    --color-punch-red-950: oklch(16.33% 0.057 15.52);
+
+    --color-classic-crimson-50: oklch(94.46% 0.029 1.99);
+    --color-classic-crimson-100: oklch(89.3% 0.06 2.64);
+    --color-classic-crimson-200: oklch(79.46% 0.124 5.11);
+    --color-classic-crimson-300: oklch(71.22% 0.188 8.75);
+    --color-classic-crimson-400: oklch(65.59% 0.235 14.29);
+    --color-classic-crimson-500: oklch(63.15% 0.254 21.97);
+    --color-classic-crimson-600: oklch(53.42% 0.215 21.19);
+    --color-classic-crimson-700: oklch(43.2% 0.174 20.25);
+    --color-classic-crimson-800: oklch(32.33% 0.13 18.37);
+    --color-classic-crimson-900: oklch(20.45% 0.082 12.99);
+    --color-classic-crimson-950: oklch(16.64% 0.067 9.99);
+}
