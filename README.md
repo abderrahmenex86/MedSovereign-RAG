@@ -18,9 +18,7 @@ ______________________________________________________________________
 
 ## Demo
 
-<video src="docs/figs/demo.gif" controls="controls" width="100%">
-Your browser does not support the video tag.
-</video>
+![Demo](docs/demo.gif)
 
 ______________________________________________________________________
 
