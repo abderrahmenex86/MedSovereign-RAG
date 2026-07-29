@@ -16,6 +16,7 @@ export const TypewriterText = ({ text, isNew, onComplete }) => {
 
     useEffect(() => {
         if (!isNew) return setDisplayedText(text);
+        if (!text) return;
         if (displayedText.length < text.length) {
             const timer = setTimeout(
                 () =>
@@ -61,14 +62,14 @@ export const LeftPanel = () => {
 
     return (
         <aside className='w-64 bg-space-indigo-950 flex flex-col h-full z-20 shrink-0 font-mono text-xs border-r border-[#162236]'>
-            <header className='p-3 border-b border-[#162236] bg-[#070b14]'>
+            <header className='px-6 py-3'>
                 <button
                     onClick={createNewSession}
                     disabled={isGenerating}
-                    className='w-full flex items-center justify-center space-x-2 py-2 px-3 bg-[#131d33] hover:bg-[#1a2b4c] text-platinum-100 rounded border border-[#1e2c47] cursor-pointer transition-colors disabled:opacity-30'>
-                    <Plus className='w-3.5 h-3.5 text-punch-red-500' />
-                    <span className='font-bold text-[11px] tracking-wider uppercase'>
-                        New Session
+                    className='w-full flex items-center justify-center space-x-2 py-1 px-3 bg-[#131d33] hover:bg-[#1a2b4c] text-platinum-100 rounded border border-[#1e2c47] cursor-pointer transition-colors disabled:opacity-30'>
+                    <Plus className='size-4 text-punch-red-500' />
+                    <span className='font-bold text-xs md:text-sm tracking-wider'>
+                        New session
                     </span>
                 </button>
             </header>
@@ -137,8 +138,8 @@ export const SidePanel = () => {
 
     return (
         <aside className='w-80 md:w-96 bg-space-indigo-950 flex flex-col h-full z-20 shrink-0 font-mono text-xs border-l border-[#162236]'>
-            <header className='flex items-center justify-between px-4 py-3 bg-[#070b14] border-b border-[#162236]'>
-                <h2 className='font-bold text-platinum-100 tracking-wider text-xs'>
+            <header className='flex items-center justify-between px-6 py-4 border-b border-[#162236]'>
+                <h2 className='font-bold text-platinum-100 tracking-wider text-sm'>
                     Agentic Trace Panel
                 </h2>
                 <button

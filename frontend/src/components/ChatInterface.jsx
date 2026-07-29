@@ -182,7 +182,7 @@ export const ChatInterface = () => {
                             className='text-platinum-100 hover:text-platinum-200 transition-colors cursor-pointer'
                             title='Toggle Reasoning Panel'>
                             {sidePanelOpen ?
-                                <PanelRightClose className='w-4 h-4 text-punch-red-500' />
+                                <PanelRightClose className='w-4 h-4 text-red-500' />
                             :   <PanelRightOpen className='w-4 h-4' />}
                         </button>
                     </section>
