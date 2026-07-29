@@ -5,13 +5,25 @@ import time
 from src.utils import log_message, serialize_trace
 
 
+def clean_generated_text(text):
+    if "ANSWER:" in text:
+        text = text.split("ANSWER:")[-1]
+    elif "Answer:" in text:
+        text = text.split("Answer:")[-1]
+    return text.strip()
+
+
 def execute_agentic_rag(original_query, hybrid_index, embedder, reranker, generator, config, run_dir):
     trace = {"original_query": original_query, "iterations": [], "final_answer": None, "status": "FAILED"}
     current_query = original_query
     attempt = 0
     max_attempts = config.get("max_retries", 3)
 
-    system_qa = "You are a precise clinical AI. Answer the user's query strictly using the provided context. If the context does not contain the answer, output EXACTLY and ONLY the phrase: 'CONTEXT_MISSING'."
+    system_qa = (
+        "You are a precise clinical AI. Answer the user's query strictly using the provided context. "
+        "DO NOT repeat the context, query, or any headers in your output. Provide ONLY the direct clinical answer. "
+        "If the context does not contain the answer, output EXACTLY and ONLY the phrase: 'CONTEXT_MISSING'."
+    )
     system_critique = "You are a strict medical auditor. Evaluate the provided ANSWER against the provided CONTEXT. Does the ANSWER contain hallucinations? Output exactly one word: 'PASS' if the answer is fully supported, or 'FAIL' if it is not."
     system_rewrite = "You are a search query optimizer. The previous search failed. Rewrite the original query into a better, highly specific keyword search query. Output ONLY the raw search query without quotes."
 
@@ -32,7 +44,6 @@ def execute_agentic_rag(original_query, hybrid_index, embedder, reranker, genera
 
         if not raw_candidates:
             yield json.dumps({"event": "correction", "message": "No documents found. Rewriting query..."}) + "\n"
-            # Fallback logic handled below
 
         yield json.dumps(
             {"event": "status", "step": "rerank", "message": "Cross-Encoder reranking candidates..."}
@@ -49,10 +60,11 @@ def execute_agentic_rag(original_query, hybrid_index, embedder, reranker, genera
 
         user_prompt = f"CONTEXT:\n{context_string}\n\nQUERY:\n{original_query}"
         generated_answer = ""
-        for token in generator.generate_stream(system_qa, user_prompt, max_tokens=2048):
+        for token in generator.generate_stream(system_qa, user_prompt, max_tokens=1024):
             generated_answer += token
             yield json.dumps({"event": "token", "data": token}) + "\n"
 
+        generated_answer = clean_generated_text(generated_answer)
         iteration_trace["generated_answer"] = generated_answer
 
         if "CONTEXT_MISSING" in generated_answer.upper():
@@ -75,7 +87,6 @@ def execute_agentic_rag(original_query, hybrid_index, embedder, reranker, genera
             trace["status"] = "SUCCESS"
             break
         else:
-            # Yield Correction Event (Triggers Strike-through in UI)
             yield json.dumps(
                 {"event": "correction", "message": "Hallucination detected. Correcting reasoning..."}
             ) + "\n"
