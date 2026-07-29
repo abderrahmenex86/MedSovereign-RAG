@@ -1,0 +1,11 @@
+datasets
+faiss-gpu
+fastapi
+matplotlib
+numpy
+pydantic
+rank_bm25
+torch
+tqdm
+transformers
+uvicorn
