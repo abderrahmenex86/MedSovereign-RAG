@@ -85,7 +85,7 @@ export const useChatStore = create(
                                     :   s.title,
                                 messages: [
                                     ...s.messages,
-                                    { ...msg, id: Date.now() },
+                                    { id: msg.id || Date.now(), ...msg },
                                 ],
                             };
                         }),
@@ -207,7 +207,7 @@ export const useChatStore = create(
                 }),
         }),
         {
-            name: 'medsovereign-session-storage',
+            name: 'medsovereign-v3-storage',
         }
     )
 );
