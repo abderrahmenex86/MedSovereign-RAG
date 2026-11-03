@@ -53,12 +53,10 @@ class HybridIndex:
 
         self.corpus_mapping = chunked_corpus
 
-        # 1. Build FAISS Dense Index
         embeddings_np = embeddings_tensor.cpu().numpy().astype("float32")
         faiss.normalize_L2(embeddings_np)
         self.dense_index.add(embeddings_np)
 
-        # 2. Build BM25 Sparse Index
         tokenized_corpus = [doc["text"].lower().split() for doc in self.corpus_mapping]
         self.sparse_index = BM25Okapi(tokenized_corpus)
 
@@ -74,7 +72,6 @@ class HybridIndex:
 
         retrieved_candidates = {}
 
-        # Fuse results
         for idx in dense_indices[0]:
             if idx != -1:
                 retrieved_candidates[idx] = self.corpus_mapping[idx]
