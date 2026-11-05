@@ -61,3 +61,47 @@
     --color-classic-crimson-900: oklch(20.45% 0.082 12.99);
     --color-classic-crimson-950: oklch(16.64% 0.067 9.99);
 }
+
+:root {
+    color-scheme: dark;
+}
+
+html,
+body,
+#root {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    background-color: var(--color-space-indigo-900);
+    color: var(--color-platinum-100);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-space-indigo-700) transparent;
+}
+
+:focus-visible {
+    outline: 2px solid var(--color-platinum-300);
+    outline-offset: 2px;
+}
+
+::selection {
+    background-color: var(--color-punch-red-700);
+    color: var(--color-platinum-50);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

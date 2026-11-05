@@ -1,11 +1,7 @@
 import { ChatInterface } from './components/ChatInterface';
 
 function App() {
-    return (
-        <div className='h-screen w-full'>
-            <ChatInterface />
-        </div>
-    );
+    return <ChatInterface />;
 }
 
 export default App;

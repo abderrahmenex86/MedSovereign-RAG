@@ -1,16 +1,43 @@
-# React + Vite
+# Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + Vite client for MedSovereign-RAG. It streams NDJSON events from the
+FastAPI backend and shows the answer, the retrieved sources, and the agent's
+reasoning trace side by side.
 
-Currently, two official plugins are available:
+## Run
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
+The client defaults to `http://localhost:8000`. To point it elsewhere:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+cp .env.example .env
+# edit VITE_API_URL
+```
 
-## Expanding the ESLint configuration
+## Scripts
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Vite dev server with HMR |
+| `npm run build` | Production build to `dist/` |
+| `npm run lint` | ESLint (no errors allowed) |
+| `npm run preview` | Serve the production build |
+
+## Layout
+
+| Path | Purpose |
+| --- | --- |
+| `src/components/ChatInterface.jsx` | Transcript, input, streaming lifecycle |
+| `src/components/AgentUI.jsx` | History panel and reasoning/sources panel |
+| `src/components/Markdown.jsx` | Markdown renderer with explicit element styles |
+| `src/lib/api.js` | Buffered NDJSON client |
+| `src/store.js` | Zustand sessions; only durable state is persisted |
+| `src/index.css` | Tailwind v4 theme tokens and base styles |
+
+Sessions and panel preferences are persisted in `localStorage`. Transient state
+(`isGenerating`, the in-flight draft) is deliberately excluded so a reload
+cannot leave the UI stuck.
