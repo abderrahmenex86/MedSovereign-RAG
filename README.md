@@ -18,8 +18,8 @@ cannot verify the result.
 - Runs the answer through a state machine where an LLM judge checks whether each
   claim is supported by the retrieved context **and** whether it answers the
   question.
-- Rewrites the query and retrieves again on a failed check, up to three retries,
-  then refuses instead of returning an unverified draft.
+- Rewrites the query and retrieves again on a failed check, up to three
+  attempts, then refuses instead of returning an unverified draft.
 
 ## Why no framework
 
@@ -106,7 +106,8 @@ reverse proxy with auth in front of it.
 }
 ```
 
-The response is newline-delimited JSON. Events:
+The response is newline-delimited JSON. `max_retries` is the total number of
+attempts, including the first. Events:
 
 | Event | Meaning |
 | --- | --- |
@@ -128,8 +129,8 @@ A question is embedded and searched both ways, the merged candidates are
 deduplicated by document and reranked, and the generator drafts an answer from
 the surviving passages. The judge compares the draft against those passages and
 the original question. A draft that fails is discarded, the question is
-rewritten, and retrieval repeats. Three failures produce a refusal rather than a
-partial answer.
+rewritten, and retrieval repeats. Three failed attempts produce a refusal rather
+than a partial answer.
 
 Retrieval indexes the question together with the answer, because MedQuad answers
 rarely repeat the topic they belong to. The generator is decoded greedily so a

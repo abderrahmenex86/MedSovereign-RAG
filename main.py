@@ -25,7 +25,12 @@ class QueryPayload(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     query: str = Field(min_length=2, max_length=APP_CONFIG.max_query_length)
-    max_retries: int = Field(default=3, ge=1, le=5)
+    max_retries: int = Field(
+        default=3,
+        ge=1,
+        le=5,
+        description="Total number of attempts, including the first.",
+    )
     top_k_retrieve: int = Field(default=15, ge=1, le=50)
     top_k_generate: int = Field(default=3, ge=1, le=10)
 
