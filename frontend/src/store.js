@@ -183,7 +183,8 @@ export const useChatStore = create(
         }),
         {
             name: 'medsovereign-v3-storage',
-            version: 2,
+            version: 1,
+            migrate: (persisted) => persisted,
             partialize: (state) => ({
                 sessions: state.sessions,
                 activeSessionId: state.activeSessionId,
