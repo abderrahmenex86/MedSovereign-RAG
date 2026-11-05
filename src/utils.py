@@ -1,11 +1,29 @@
 import json
+import logging
 import os
 import random
+import uuid
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import torch
-from tqdm.auto import tqdm
+
+_LOGGER = logging.getLogger("medsovereign")
+_LOG_FORMAT = "[%(name)s] [%(asctime)s] %(message)s"
+_DATE_FORMAT = "%m/%d - %H:%M"
+
+
+def configure_logging(level=logging.INFO):
+    """Configure the package logger once, without duplicating handlers on reload."""
+    if _LOGGER.handlers:
+        return
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(_LOG_FORMAT, datefmt=_DATE_FORMAT))
+    _LOGGER.addHandler(handler)
+    _LOGGER.setLevel(level)
+    _LOGGER.propagate = False
 
 
 def set_determinism(seed=42):
@@ -18,34 +36,49 @@ def set_determinism(seed=42):
 
 
 def log_message(category, message, log_file=None):
-    timestamp = datetime.now().strftime("%m/%d - %H:%M")
-    formatted_message = f"[{category.upper()}] [{timestamp}] {message}"
-    tqdm.write(formatted_message)
+    formatted_message = f"[{category.upper()}] {message}"
+    _LOGGER.info(formatted_message)
 
     if log_file:
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(formatted_message + "\n")
+        Path(log_file).parent.mkdir(parents=True, exist_ok=True)
+        with open(log_file, "a", encoding="utf-8") as handle:
+            handle.write(f"{datetime.now().isoformat()} {formatted_message}\n")
+
+
+def new_trace_path(output_dir):
+    """Return a collision-free trace path (time alone breaks under concurrency)."""
+    timestamp = int(datetime.now().timestamp() * 1000)
+    return os.path.join(str(output_dir), f"trace_{timestamp}_{uuid.uuid4().hex[:8]}.json")
 
 
 def serialize_trace(trace_dict, out_path):
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(trace_dict, f, indent=4, ensure_ascii=False)
+    """Write a trace atomically so a crash cannot leave a truncated JSON file."""
+    path = Path(out_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = path.with_suffix(path.suffix + ".tmp")
+
+    with open(temporary_path, "w", encoding="utf-8") as handle:
+        json.dump(trace_dict, handle, indent=4, ensure_ascii=False)
+        handle.flush()
+        os.fsync(handle.fileno())
+
+    os.replace(temporary_path, path)
 
 
-def calculate_token_distribution(tokenizer, texts, out_path):
-    import matplotlib.pyplot as plt
+def prune_traces(output_dir, keep=200):
+    """Keep the most recent `keep` trace files and delete the rest."""
+    directory = Path(output_dir)
+    if not directory.is_dir():
+        return
 
-    lengths = [len(tokenizer.encode(t)) for t in texts]
+    traces = sorted(
+        directory.glob("trace_*.json"),
+        key=lambda item: item.stat().st_mtime,
+        reverse=True,
+    )
 
-    plt.figure(figsize=(10, 6), dpi=300)
-    plt.hist(lengths, bins=50, color="#1A56DB", alpha=0.8)
-    plt.title("Document Chunk Token Length Distribution")
-    plt.xlabel("Token Count")
-    plt.ylabel("Frequency")
-    plt.grid(True, linestyle="--", alpha=0.5)
-
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    plt.tight_layout()
-    plt.savefig(out_path)
-    plt.close()
+    for stale_trace in traces[keep:]:
+        try:
+            stale_trace.unlink()
+        except OSError as exc:
+            _LOGGER.warning("Could not delete old trace %s: %s", stale_trace, exc)
