@@ -31,12 +31,21 @@ cp .env.example .env
 
 | Path | Purpose |
 | --- | --- |
-| `src/components/ChatInterface.jsx` | Transcript, input, streaming lifecycle |
-| `src/components/AgentUI.jsx` | History panel and reasoning/sources panel |
+| `src/components/ChatInterface.jsx` | Transcript, composer, streaming lifecycle, health status |
+| `src/components/AgentUI.jsx` | Consultation sidebar and the Sources / Reasoning evidence panel |
 | `src/components/Markdown.jsx` | Markdown renderer with explicit element styles |
-| `src/lib/api.js` | Buffered NDJSON client |
+| `src/components/ui.jsx` | Small shadcn-style primitives: button, badge, tabs, spinner |
+| `src/lib/api.js` | Buffered NDJSON client and health check |
 | `src/store.js` | Zustand sessions; only durable state is persisted |
-| `src/index.css` | Tailwind v4 theme tokens and base styles |
+| `src/index.css` | Tailwind v4 theme tokens, fonts, and base styles |
+
+## Design
+
+The interface is a white, navy-accented clinical workspace. Poppins carries the
+interface and body text; Cubao Free carries the wordmark and the empty-state
+display line. Both typefaces are SIL OFL 1.1. Poppins is loaded from Google
+Fonts, while the Cubao files are bundled in `public/fonts/` with the license in
+`public/fonts/CUBAO-LICENSE.txt`.
 
 Sessions and panel preferences are persisted in `localStorage`. Transient state
 (`isGenerating`, the in-flight draft) is deliberately excluded so a reload

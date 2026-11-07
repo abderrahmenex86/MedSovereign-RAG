@@ -12,6 +12,8 @@ and data downloaded at runtime carry their own licenses:
 | `keivalya/MedQuad-MedicalQnADataset` | Hugging Face | No license declared (derived from NIH/NIDDK public pages) |
 | PubMed abstracts (optional `jsonl` corpus) | NLM E-utilities | NLM terms; abstract copyright remains with the publisher |
 | `qiaojin/PubMedQA` (retrieval evaluation) | Hugging Face | See the dataset card; use for evaluation only |
+| Cubao Free (wordmark and display headline) | Aaron Amar | SIL OFL 1.1 (`frontend/public/fonts/CUBAO-LICENSE.txt`) |
+| Poppins (interface) | Indian Type Foundry | SIL OFL 1.1 |
 
 The embedding model is **non-commercial**. Do not deploy this pipeline in a
 commercial product without replacing it with a permissively licensed embedder
