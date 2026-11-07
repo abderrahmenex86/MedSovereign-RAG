@@ -23,7 +23,6 @@ _The 40.4-second silent demo follows the seeded acute-bronchitis conversation fr
 - [Development](#development)
 - [Limits](#limits)
 - [Stack](#stack)
-- [Source and notices](#source-and-notices)
 
 ## What it does
 
@@ -311,6 +310,7 @@ The index cache key hashes the corpus contents, so a cache built on the GPU box 
 The request path is the same for the Transformers and Ollama backends.
 
 ```mermaid
+%%{init: {'theme': 'default'}}%%
 flowchart LR
   subgraph Client
     UI["React + Vite UI"]
@@ -556,7 +556,3 @@ The repository does not redistribute the corpus or model weights.
 | Typography | Poppins, SIL OFL 1.1 |
 | Streaming | NDJSON over `fetch` with a ReadableStream reader |
 | Testing | pytest, ruff, mypy, ESLint |
-
-## Source and notices
-
-Code is MIT; see `LICENSE`. The models and data carry their own terms, including the non-commercial CC BY-NC 2.0 embedder, MedQuad's undeclared license, and publisher terms on PubMed abstracts. `NOTICE.md` lists the models and datasets that carry explicit terms; it does not list the demo's `qwen3:14b`, so check that model card before redistribution or commercial use. The optional `medgemma:4b` generator has Health AI Developer Foundations terms listed in `NOTICE.md`. Replace the embedder before any commercial deployment.
