@@ -27,6 +27,7 @@ class QueryPayload(BaseModel):
 
     query: str = Field(min_length=2, max_length=APP_CONFIG.max_query_length)
     request_id: str | None = Field(default=None, max_length=64)
+    generate_title: bool = True
     max_retries: int = Field(
         default=3,
         ge=1,
@@ -268,6 +269,7 @@ async def ask_agent(payload: QueryPayload, request: Request):
         "top_k_generate": payload.top_k_generate,
         "min_rerank_score": config.min_rerank_score,
         "trace_retention": config.trace_retention,
+        "generate_title": payload.generate_title,
     }
 
     cancel_event = threading.Event()

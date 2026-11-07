@@ -4,10 +4,12 @@ from pathlib import Path
 
 from src.engine import (
     SYSTEM_CRITIQUE,
+    SYSTEM_TITLE,
     clean_generated_text,
     execute_agentic_rag,
     parse_verdict,
     sanitize_query,
+    sanitize_title,
     select_context,
 )
 
@@ -44,6 +46,8 @@ class FakeGenerator:
         self.rewrite_calls = 0
 
     def generate(self, system_prompt, user_prompt, max_tokens=256):
+        if system_prompt == SYSTEM_TITLE:
+            return "Asthma overview"
         if system_prompt == SYSTEM_CRITIQUE:
             self.critique_calls += 1
             return self.critique
@@ -103,6 +107,15 @@ def test_sanitize_query_strips_prefix_and_quotes():
     assert sanitize_query("", "fallback") == "fallback"
 
 
+def test_sanitize_title_enforces_short_clean_titles():
+    assert sanitize_title('Title: "Acute bronchitis care."', "fallback") == "Acute bronchitis care"
+    assert sanitize_title("", "What is asthma?") == "What is asthma?"
+    assert sanitize_title("A" * 80, "fallback") == "A" * 40
+    assert sanitize_title("A very long clinical consultation title that exceeds the limit", "fallback") == (
+        "A very long clinical consultation title"
+    )
+
+
 def test_select_context_keeps_one_chunk_per_document():
     candidates = _candidates() + [
         {"chunk_id": "doc_0_chunk_1", "doc_id": "doc_0", "question": "asthma", "text": "duplicate", "rank": 9}
@@ -116,8 +129,10 @@ def test_select_context_keeps_one_chunk_per_document():
 def test_successful_run_ends_with_done_success():
     events = _run(_candidates(), FakeGenerator(critique="PASS"))
 
+    assert events[0] == {"event": "title", "data": "Asthma overview"}
     assert events[-1]["event"] == "done"
     assert events[-1]["trace"]["status"] == "SUCCESS"
+    assert events[-1]["trace"]["title"] == "Asthma overview"
     assert events[-1]["trace"]["final_answer"] == "The answer is grounded."
     assert events[-1]["trace"]["attempts"] == 1
 

@@ -24,6 +24,29 @@ SYSTEM_REWRITE = (
     "better, highly specific keyword search query. Output ONLY the raw search query without quotes."
 )
 
+SYSTEM_TITLE = (
+    "You write short titles for clinical consultations. Use sentence case, no quotation marks, "
+    "and at most 40 characters. Output only the title."
+)
+
+
+def sanitize_title(raw_title, fallback):
+    title = (raw_title or "").strip()
+
+    if not title:
+        title = fallback
+
+    title = title.splitlines()[0]
+    title = re.sub(r"^(title|conversation title)\s*:\s*", "", title, flags=re.IGNORECASE)
+    title = title.strip().strip("\"'`").strip()
+    title = re.sub(r"\s+", " ", title)
+    title = title.rstrip(" .,;:-")
+
+    if len(title) > 40:
+        title = title[:40].rsplit(" ", 1)[0].rstrip(" .,;:-")
+
+    return title or fallback[:40]
+
 
 def clean_generated_text(text):
     cleaned = text.strip()
@@ -131,6 +154,18 @@ def execute_agentic_rag(
     error_message = None
 
     try:
+        if config.get("generate_title", True) and not (
+            cancel_event is not None and cancel_event.is_set()
+        ):
+            try:
+                title_prompt = f"Question:\n{original_query}\n\nTitle:"
+                raw_title = generator.generate(SYSTEM_TITLE, title_prompt, max_tokens=24)
+                generated_title = sanitize_title(raw_title, original_query)
+                trace["title"] = generated_title
+                yield json.dumps({"event": "title", "data": generated_title}) + "\n"
+            except Exception as exc:  # noqa: BLE001 - a title must not kill the answer
+                log_message("engine", f"Title generation failed: {exc}")
+
         while attempt < max_attempts:
             if cancel_event is not None and cancel_event.is_set():
                 trace["status"] = "CANCELLED"
