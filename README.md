@@ -2,9 +2,9 @@
 
 MedSovereign-RAG answers clinical questions by retrieving biomedical literature, reranking the passages, drafting an answer, and sending the draft through an LLM judge before showing it. I built it to keep the retrieval and verification loop explicit: dense and sparse search, cross-encoder reranking, a grounded draft, and a PASS/FAIL audit are separate stages you can inspect in the trace. It is aimed at ML engineers and clinical-informatics reviewers who want to see how a small RAG system behaves on real biomedical abstracts. The generator is pluggable: Zephyr-7B through Transformers by default, or a local model such as `qwen3:14b` through Ollama. If the judge cannot verify an answer within three attempts, the pipeline returns `REFUSED` and discards the draft.
 
-[![MedSovereign-RAG interface with a cited acute-bronchitis answer, 14 seeded consultations, and a Reasoning tab showing a judge PASS](docs/figs/interface.png)](docs/figs/demo.mp4)
+https://github.com/user-attachments/assets/f4c9eb8c-78a9-457f-a41d-8f1c1cfdc127
 
-_The seeded acute-bronchitis conversation after a judge PASS. The Reasoning tab shows the search, rerank, draft, and audit steps. Click the image to open the 40-second silent demo._
+_The 40.4-second silent demo follows the seeded acute-bronchitis conversation from question to judge PASS, then a follow-up and the dark-mode reveal._
 
 ## Contents
 
@@ -62,6 +62,10 @@ The video follows one seeded conversation:
 3. The answer streams with a citation to [PMID 32092323](https://pubmed.ncbi.nlm.nih.gov/32092323/). The Evidence panel lists three PubMed records; the Reasoning tab ends with "Critique PASSED. Answer verified."
 4. A follow-up asks when antibiotics are indicated for acute bronchitis. The pipeline retrieves a different set of passages and returns a second verified answer.
 5. The last beat toggles dark mode through the 900 ms radial reveal.
+
+![MedSovereign interface with the acute-bronchitis answer and the Reasoning tab showing a judge PASS](docs/figs/interface.png)
+
+_The verified answer and Reasoning trace from the recording. The Sources tab holds the three cited PubMed records._
 
 The demo run used the following setup:
 
@@ -304,9 +308,7 @@ The index cache key hashes the corpus contents, so a cache built on the GPU box 
 
 ## How it works
 
-![System architecture with a React client, FastAPI NDJSON API, agentic engine, FAISS and BM25 indexes, reranker, generator, and trace files](docs/figs/architecture-1.png)
-
-_The diagram names Zephyr-7B because that is the default Transformers backend. The recorded demo uses qwen3:14b through Ollama; the engine interface is the same._
+The request path is the same for the Transformers and Ollama backends.
 
 ```mermaid
 flowchart LR
@@ -369,7 +371,7 @@ Streaming. `main.py` runs the blocking pipeline in a worker thread and bridges i
 | `tests/` | Backend tests for config, corpus, retrieval, engine, streaming, Ollama, and PubMed |
 | `frontend/` | React 19 and Vite 8 interface |
 | `deploy/vast.env.example` | GPU box environment template |
-| `docs/figs/` | Interface screenshot, demo video, and architecture diagrams |
+| `docs/figs/` | Interface screenshot and demo video |
 | `dataset/` | MedQuad or Europe PMC corpus. Ignored by git |
 | `artifacts/` | Index cache, traces, evaluation output, and the local demo pack. Ignored by git |
 | `setup_dataset.py` | MedQuad download and deduplication |
