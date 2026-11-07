@@ -65,6 +65,13 @@ def _env_bool(name: str, default: bool) -> bool:
     raise ValueError(f"{name} must be a boolean, got {raw!r}")
 
 
+def _env_optional_bool(name: str, default: bool | None = None) -> bool | None:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+    return _env_bool(name, default=False)
+
+
 def _env_list(name: str, default: tuple[str, ...]) -> tuple[str, ...]:
     raw = os.getenv(name)
     if raw is None or not raw.strip():
@@ -92,6 +99,13 @@ class Config:
     seed: int
     model_dtype: str
     max_query_length: int
+    generator_backend: str
+    ollama_base_url: str
+    ollama_model: str
+    ollama_num_ctx: int
+    ollama_think: bool | None
+    ollama_request_timeout: int
+    ollama_keep_alive: str
 
     @classmethod
     def from_env(cls) -> Config:
@@ -101,6 +115,12 @@ class Config:
         if chunk_overlap >= chunk_size:
             raise ValueError(
                 f"CHUNK_OVERLAP ({chunk_overlap}) must be smaller than CHUNK_SIZE ({chunk_size})"
+            )
+
+        generator_backend = _env_str("GENERATOR_BACKEND", "transformers").lower()
+        if generator_backend not in {"transformers", "ollama"}:
+            raise ValueError(
+                f"GENERATOR_BACKEND must be 'transformers' or 'ollama', got {generator_backend!r}"
             )
 
         return cls(
@@ -122,4 +142,11 @@ class Config:
             seed=_env_int("SEED", 42),
             model_dtype=_env_str("MODEL_DTYPE", "auto").lower(),
             max_query_length=_env_int("MAX_QUERY_LENGTH", 2000, minimum=1),
+            generator_backend=generator_backend,
+            ollama_base_url=_env_str("OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
+            ollama_model=_env_str("OLLAMA_MODEL", "medgemma:4b"),
+            ollama_num_ctx=_env_int("OLLAMA_NUM_CTX", 8192, minimum=512),
+            ollama_think=_env_optional_bool("OLLAMA_THINK", None),
+            ollama_request_timeout=_env_int("OLLAMA_REQUEST_TIMEOUT", 600, minimum=10),
+            ollama_keep_alive=_env_str("OLLAMA_KEEP_ALIVE", "10m"),
         )

@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from src.config import Config
 from src.data import HybridIndex, build_index_text, index_cache_key, parse_corpus
 from src.engine import execute_agentic_rag
-from src.models import ClinicalEmbedder, ClinicalGenerator, ClinicalReranker
+from src.models import ClinicalEmbedder, ClinicalGenerator, ClinicalReranker, OllamaGenerator
 from src.utils import configure_logging, log_message, set_determinism
 
 APP_CONFIG = Config.from_env()
@@ -79,6 +79,22 @@ def _load_hybrid_index(config, embedder):
     return hybrid_index, len(chunked_corpus)
 
 
+def _build_generator(config, device):
+    if config.generator_backend == "ollama":
+        generator = OllamaGenerator(
+            model_name=config.ollama_model,
+            base_url=config.ollama_base_url,
+            num_ctx=config.ollama_num_ctx,
+            think=config.ollama_think,
+            timeout=config.ollama_request_timeout,
+            keep_alive=config.ollama_keep_alive,
+        )
+        generator.check_ready()
+        return generator
+
+    return ClinicalGenerator(config.generator_model, device, config.model_dtype)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
@@ -99,7 +115,7 @@ async def lifespan(app: FastAPI):
 
     embedder = ClinicalEmbedder(config.embedder_model, device)
     reranker = ClinicalReranker(config.reranker_model, device)
-    generator = ClinicalGenerator(config.generator_model, device, config.model_dtype)
+    generator = _build_generator(config, device)
 
     hybrid_index, corpus_size = _load_hybrid_index(config, embedder)
 
@@ -118,7 +134,8 @@ async def lifespan(app: FastAPI):
         "corpus_documents": len({chunk["doc_id"] for chunk in hybrid_index.corpus_mapping}),
         "embedder": config.embedder_model,
         "reranker": config.reranker_model,
-        "generator": config.generator_model,
+        "generator": generator.model_name,
+        "generator_backend": config.generator_backend,
         "startup_seconds": round(time.perf_counter() - started_at, 2),
     }
     app.state.ready = True
@@ -133,6 +150,9 @@ async def lifespan(app: FastAPI):
 
     log_message("api", "Shutting down and clearing VRAM...")
     app.state.ready = False
+    close_generator = getattr(app.state.components.get("generator"), "close", None)
+    if callable(close_generator):
+        close_generator()
     app.state.components.clear()
     gc.collect()
     if torch.cuda.is_available():

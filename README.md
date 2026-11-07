@@ -34,6 +34,8 @@ attempt is written to a trace you can inspect.
 - 24 GB of GPU memory is recommended. Zephyr-7B in bfloat16 is about 14 GB of
   weights, plus the embedder, reranker, and KV cache. 16 GB cards may run out of
   memory; `MODEL_DTYPE=fp16` helps on GPUs without bfloat16 (T4, V100).
+- No GPU? Set `GENERATOR_BACKEND=ollama` and run a quantized model such as
+  `medgemma:4b` (3.3 GB). Expect roughly 5–10 tokens/sec on a laptop CPU.
 - The pipeline runs on CPU, but a 7B generator on CPU is far too slow for
   interactive use.
 - About 20 GB of disk for model weights, plus the corpus and index cache.
@@ -71,6 +73,25 @@ npm run dev
 If the API is not on `localhost:8000`, copy `frontend/.env.example` to
 `frontend/.env` and set `VITE_API_URL`.
 
+### No GPU: run the generator through Ollama
+
+The embedder and reranker stay local; only the generator moves to Ollama.
+
+```bash
+sudo systemctl enable --now ollama
+ollama pull medgemma:4b
+
+GENERATOR_BACKEND=ollama python main.py
+```
+
+The first request loads the model into memory (about a minute on a laptop CPU).
+`OLLAMA_KEEP_ALIVE=10m` keeps it resident between requests so later queries do
+not pay that cost again. `medgemma:4b` follows the grounding and judge prompts
+reasonably well, but a 4B model is a weaker auditor than Zephyr-7B.
+On a CPU-only laptop (Ryzen 5 4650U, 14 GB RAM) a verified answer took about 62
+seconds, including retrieval and the judge. Building the full 21k-chunk index on
+CPU is a one-time cost that can take tens of minutes; it is cached afterwards.
+
 ## Configuration
 
 Every setting has an environment variable; see `.env.example` for the full list.
@@ -78,8 +99,15 @@ Every setting has an environment variable; see `.env.example` for the full list.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `HOST` / `PORT` | `127.0.0.1` / `8000` | API bind address |
-| `GENERATOR_MODEL` | `HuggingFaceH4/zephyr-7b-beta` | Answer and judge model |
+| `GENERATOR_MODEL` | `HuggingFaceH4/zephyr-7b-beta` | HF generator (transformers backend) |
 | `MODEL_DTYPE` | `auto` | `auto`, `bf16`, `fp16`, or `fp32` |
+| `GENERATOR_BACKEND` | `transformers` | `transformers` or `ollama` |
+| `OLLAMA_MODEL` | `medgemma:4b` | Any pulled Ollama model |
+| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama server |
+| `OLLAMA_NUM_CTX` | `8192` | Generator context window |
+| `OLLAMA_KEEP_ALIVE` | `10m` | How long the model stays loaded |
+| `OLLAMA_THINK` | unset | Set `false` for thinking models such as Qwen3 |
+| `OLLAMA_REQUEST_TIMEOUT` | `600` | Read timeout in seconds |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `300` / `50` | Word-level chunking |
 | `MAX_CONCURRENT_REQUESTS` | `1` | Serialize jobs on one GPU |
 | `PERSIST_TRACES` | `true` | Write traces to `TRACE_DIR` |
@@ -135,7 +163,9 @@ than a partial answer.
 Retrieval indexes the question together with the answer, because MedQuad answers
 rarely repeat the topic they belong to. The generator is decoded greedily so a
 trace can be reproduced. The judge returns a single token, parsed by the first
-`PASS`/`FAIL` it emits.
+`PASS`/`FAIL` it emits. The generator can be Zephyr-7B loaded by Transformers or
+a quantized model served by Ollama; the engine only depends on the streaming
+interface.
 
 ## Development
 
@@ -157,13 +187,16 @@ npm run build
 - The judge is another language model. A confidently wrong draft that matches the
   retrieved text can still pass. No benchmark or human evaluation is committed
   yet, so the self-correction loop's benefit over a single pass is unmeasured.
+- On CPU, a 4B Ollama model generates roughly 5–10 tokens/sec; a full answer
+  with verification can take a minute or more.
 - The embedding model is licensed CC BY-NC 2.0, which forbids commercial use.
-  See `NOTICE.md`.
+  MedGemma has its own license. See `NOTICE.md`.
 - Not a medical device and not validated for clinical use.
 
 ## Stack
 
-Python · PyTorch · Hugging Face Transformers · FAISS · BM25 · FastAPI · React
+Python · PyTorch · Hugging Face Transformers · FAISS · BM25 · FastAPI · React ·
+Ollama (optional)
 
 ## License
 

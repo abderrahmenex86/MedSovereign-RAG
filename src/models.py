@@ -1,5 +1,7 @@
+import json
 from threading import Event, Thread
 
+import httpx
 import torch
 import torch.nn.functional as F
 from tqdm.auto import tqdm
@@ -144,7 +146,10 @@ class _StopOnEvent(StoppingCriteria):
 
 
 class ClinicalGenerator:
+    backend = "transformers"
+
     def __init__(self, model_name, device, dtype_preference="auto"):
+        self.model_name = model_name
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         dtype = resolve_torch_dtype(device, dtype_preference)
         self.model = AutoModelForCausalLM.from_pretrained(model_name, dtype=dtype).to(device)
@@ -215,3 +220,123 @@ class ClinicalGenerator:
 
         if errors:
             raise errors[0]
+
+
+class OllamaGenerator:
+    """Generator backed by a local Ollama server.
+
+    Implements the same interface as ClinicalGenerator, so the engine does not
+    care where the tokens come from.
+    """
+
+    backend = "ollama"
+
+    def __init__(
+        self,
+        model_name,
+        base_url="http://127.0.0.1:11434",
+        num_ctx=8192,
+        think=None,
+        timeout=600.0,
+        keep_alive="10m",
+        client=None,
+    ):
+        self.model_name = model_name
+        self.base_url = base_url.rstrip("/")
+        self.num_ctx = num_ctx
+        self.think = think
+        self.timeout = timeout
+        self.keep_alive = keep_alive
+        self._owns_client = client is None
+        self._client = client or httpx.Client(
+            base_url=self.base_url,
+            timeout=httpx.Timeout(connect=10.0, read=timeout, write=30.0, pool=10.0),
+        )
+
+    def check_ready(self):
+        """Fail at startup, with a pull instruction, instead of on the first query."""
+        try:
+            response = self._client.get("/api/tags")
+        except httpx.HTTPError as exc:
+            raise RuntimeError(
+                f"Cannot reach Ollama at {self.base_url}. Start it with `ollama serve`. ({exc})"
+            ) from exc
+
+        if response.status_code != 200:
+            raise RuntimeError(self._error_message(response))
+
+        available = {model.get("name", "") for model in response.json().get("models", [])}
+        if self.model_name not in available and f"{self.model_name}:latest" not in available:
+            raise RuntimeError(
+                f"Ollama model {self.model_name!r} is not pulled. "
+                f"Run `ollama pull {self.model_name}`."
+            )
+
+    def _error_message(self, response):
+        try:
+            detail = response.json().get("error")
+        except ValueError:
+            detail = response.text
+
+        return f"Ollama request failed ({response.status_code}): {detail or response.reason_phrase}"
+
+    def _payload(self, system_prompt, user_prompt, max_tokens, stream):
+        payload = {
+            "model": self.model_name,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "stream": stream,
+            "keep_alive": self.keep_alive,
+            "options": {
+                "temperature": 0.0,
+                "num_ctx": self.num_ctx,
+                "num_predict": max_tokens,
+            },
+        }
+        if self.think is not None:
+            payload["think"] = self.think
+        return payload
+
+    def generate(self, system_prompt, user_prompt, max_tokens=256):
+        response = self._client.post(
+            "/api/chat",
+            json=self._payload(system_prompt, user_prompt, max_tokens, stream=False),
+        )
+
+        if response.status_code != 200:
+            raise RuntimeError(self._error_message(response))
+
+        body = response.json()
+        if body.get("error"):
+            raise RuntimeError(f"Ollama error: {body['error']}")
+
+        return (body.get("message", {}).get("content") or "").strip()
+
+    def generate_stream(self, system_prompt, user_prompt, max_tokens=256):
+        payload = self._payload(system_prompt, user_prompt, max_tokens, stream=True)
+
+        with self._client.stream("POST", "/api/chat", json=payload) as response:
+            if response.status_code != 200:
+                response.read()
+                raise RuntimeError(self._error_message(response))
+
+            for line in response.iter_lines():
+                if not line.strip():
+                    continue
+
+                chunk = json.loads(line)
+                if chunk.get("error"):
+                    raise RuntimeError(f"Ollama error: {chunk['error']}")
+
+                content = chunk.get("message", {}).get("content") or ""
+                if content:
+                    yield content
+
+                if chunk.get("done"):
+                    break
+
+    def close(self):
+        if self._owns_client:
+            self._client.close()
