@@ -139,7 +139,7 @@ via Transformers still works as a no-Ollama fallback.
    pip install -r requirements.txt
 
    cp deploy/vast.env.example .env
-   python scripts/fetch_pubmed.py --limit 100000 --include-pubmedqa
+   python scripts/fetch_europepmc.py --limit 100000 --include-pubmedqa
    python scripts/build_index.py
    python scripts/evaluate_retrieval.py --limit 200
 
@@ -182,10 +182,12 @@ weaker judge.
 
 The default `setup_dataset.py` downloads MedQuad, which is useful for a quick
 demo but is a set of consumer Q&A pairs, not clinical evidence. For a real
-retrieval workload, use the PubMed JSONL corpus:
+retrieval workload, use the Europe PMC JSONL corpus. PubMed's ESearch only
+returns the first 9,999 records; Europe PMC exposes the same MEDLINE records
+with cursor-based paging.
 
 ```bash
-python scripts/fetch_pubmed.py --limit 100000 --include-pubmedqa
+python scripts/fetch_europepmc.py --limit 100000 --include-pubmedqa
 
 CORPUS_FORMAT=jsonl CORPUS_PATH=dataset/pubmed.jsonl python scripts/build_index.py
 CORPUS_FORMAT=jsonl CORPUS_PATH=dataset/pubmed.jsonl python main.py

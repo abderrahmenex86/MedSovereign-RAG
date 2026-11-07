@@ -25,8 +25,9 @@ SYSTEM_REWRITE = (
 )
 
 SYSTEM_TITLE = (
-    "You write short titles for clinical consultations. Use sentence case, no quotation marks, "
-    "and at most 40 characters. Output only the title."
+    "You name clinical consultations. Write a specific title in 3 to 6 words and at most 40 "
+    "characters, naming the condition and the intervention. Use sentence case, no quotes. "
+    "Output only the title. Example: Acute bronchitis treatment"
 )
 
 
@@ -159,7 +160,7 @@ def execute_agentic_rag(
         ):
             try:
                 title_prompt = f"Question:\n{original_query}\n\nTitle:"
-                raw_title = generator.generate(SYSTEM_TITLE, title_prompt, max_tokens=24)
+                raw_title = generator.generate(SYSTEM_TITLE, title_prompt, max_tokens=20)
                 generated_title = sanitize_title(raw_title, original_query)
                 trace["title"] = generated_title
                 yield json.dumps({"event": "title", "data": generated_title}) + "\n"

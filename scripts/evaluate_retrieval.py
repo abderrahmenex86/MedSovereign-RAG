@@ -2,7 +2,7 @@
 """Evaluate retrieval on PubMedQA (query -> labeled PMID).
 
 The corpus must contain the PubMedQA PMIDs. Fetch them with:
-    python scripts/fetch_pubmed.py --limit 100000 --include-pubmedqa
+    python scripts/fetch_europepmc.py --limit 100000 --include-pubmedqa
 
 Then:
     CORPUS_FORMAT=jsonl CORPUS_PATH=dataset/pubmed.jsonl \

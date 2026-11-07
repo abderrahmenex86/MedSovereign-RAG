@@ -160,6 +160,30 @@ def _request(client, endpoint, params, attempts=5):
     raise last_error or RuntimeError("PubMed request failed")
 
 
+def _get_json(client, endpoint, params, attempts=8):
+    """Retry intermittent HTML/error bodies returned with a 200 status."""
+    last_response = None
+
+    for attempt in range(attempts):
+        response = _request(client, endpoint, params)
+        try:
+            return response.json()
+        except ValueError:
+            last_response = response
+            print(
+                f"[WARN] PubMed returned non-JSON content "
+                f"({response.status_code}, {response.headers.get('content-type')}): "
+                f"{response.text[:180]!r}",
+                flush=True,
+            )
+            time.sleep(min(2**attempt, 30))
+
+    content_type = last_response.headers.get("content-type") if last_response else "unknown"
+    raise RuntimeError(
+        f"PubMed returned non-JSON content ({content_type}); retry the fetch with --resume"
+    )
+
+
 def search_pubmed(
     client,
     query,
@@ -179,10 +203,11 @@ def search_pubmed(
     seen = set()
     retstart = 0
 
+    _pause(api_key)
+
     while len(pmids) < limit:
         params = {**common, "retmax": min(page_size, limit - len(pmids)), "retstart": retstart}
-        response = _request(client, "esearch.fcgi", params)
-        payload = response.json().get("esearchresult", {})
+        payload = _get_json(client, "esearch.fcgi", params).get("esearchresult", {})
         page = payload.get("idlist", [])
 
         if not page:

@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Download PubMed abstracts into the JSONL corpus format.
 
+PubMed ESearch returns at most 9,999 records. For a larger corpus use
+`scripts/fetch_europepmc.py`.
+
 Examples:
-    python scripts/fetch_pubmed.py --limit 100000
-    python scripts/fetch_pubmed.py --limit 100000 --include-pubmedqa
+    python scripts/fetch_pubmed.py --limit 5000
+    python scripts/fetch_pubmed.py --limit 5000 --include-pubmedqa
     python scripts/fetch_pubmed.py --reuse-manifest --resume
 """
 
@@ -88,7 +91,7 @@ def dedupe(values):
 def main():
     parser = argparse.ArgumentParser(description="Fetch PubMed abstracts as JSONL.")
     parser.add_argument("--query", default=DEFAULT_QUERY)
-    parser.add_argument("--limit", type=int, default=100_000)
+    parser.add_argument("--limit", type=int, default=9999)
     parser.add_argument("--output", type=Path, default=Path("dataset/pubmed.jsonl"))
     parser.add_argument("--pmids-file", type=Path, default=Path("dataset/pubmed_pmids.txt"))
     parser.add_argument("--sort", default="relevance", choices=["relevance", "pub_date"])
@@ -100,6 +103,12 @@ def main():
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
+
+    if args.limit > 9999:
+        raise SystemExit(
+            "PubMed ESearch caps at 9,999 records. "
+            "Use scripts/fetch_europepmc.py for larger corpora."
+        )
 
     if args.output.exists() and not (args.resume or args.force):
         raise SystemExit(f"{args.output} exists; use --resume or --force")
