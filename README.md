@@ -143,8 +143,10 @@ costs well under $1.
    ```
 
 The index cache key hashes the corpus contents, so a cache built on the GPU box
-matches the same corpus on the laptop. `push.sh` excludes `.env`; keep the HF
-token out of the repo. Public models do not need a token. Set
+matches the same corpus on the laptop. Use the same `dataset/medquad_corpus.json`
+on both sides: copy the file over, or run `python setup_dataset.py --force` on
+both machines before building/fetching the cache. `push.sh` excludes `.env`; keep
+the HF token out of the repo. Public models do not need a token. Set
 `PERSIST_TRACES=false` on a rented or shared machine.
 
 If the image does not already have a CUDA-enabled torch, install the wheel that
