@@ -102,6 +102,60 @@ That indexes about 1,300 chunks in 8–10 minutes. The cache key includes
 the full index once on a GPU machine and copy `artifacts/index_cache/` to the
 CPU host.
 
+### GPU box (vast.ai)
+
+For the full-size generator, rent a 24 GB card (RTX 3090/4090, A5000, L4) with at
+least 50 GB of disk and 16 GB of host RAM. Zephyr-7B is ~14 GB of weights plus
+2–3 GB of KV cache and CUDA overhead; 16 GB cards are too tight for 1,024-token
+answers. A 3090 on vast.ai is typically around $0.20–0.35/hour, so a short demo
+costs well under $1.
+
+1. Rent an **on-demand** (not interruptible) PyTorch/CUDA 12.x image.
+2. From your machine:
+
+   ```bash
+   ./push.sh root@HOST -p PORT
+   ```
+
+3. On the instance:
+
+   ```bash
+   cd /workspace/MedSovereign-RAG
+   python3 -m venv .venv && source .venv/bin/activate
+   pip install -r requirements.txt
+   python setup_dataset.py
+   python main.py
+   ```
+
+4. Tunnel the API to your laptop and run the UI locally. This keeps the
+   unauthenticated API off the public internet:
+
+   ```bash
+   ssh -p PORT root@HOST -L 8000:127.0.0.1:8000
+   # in another shell
+   cd frontend && npm run dev
+   ```
+
+5. Fetch the GPU-built index so the laptop does not spend hours embedding:
+
+   ```bash
+   ./fetch.sh root@HOST -p PORT --all
+   ```
+
+The index cache key hashes the corpus contents, so a cache built on the GPU box
+matches the same corpus on the laptop. `push.sh` excludes `.env`; keep the HF
+token out of the repo. Public models do not need a token. Set
+`PERSIST_TRACES=false` on a rented or shared machine.
+
+If the image does not already have a CUDA-enabled torch, install the wheel that
+matches its CUDA version before the requirements file, for example
+`pip install torch --index-url https://download.pytorch.org/whl/cu124`.
+`MODEL_DTYPE=auto` selects bfloat16 on Ampere/Ada and float16 on T4/V100.
+
+A 12–16 GB card also works with `GENERATOR_BACKEND=ollama` and a quantized
+`qwen3:8b` (~5 GB) or `medgemma:4b` (3.3 GB), which is cheaper and faster but a
+weaker judge.
+
 ## Configuration
 
 Every setting has an environment variable; see `.env.example` for the full list.
