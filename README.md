@@ -73,6 +73,14 @@ npm run dev
 If the API is not on `localhost:8000`, copy `frontend/.env.example` to
 `frontend/.env` and set `VITE_API_URL`.
 
+To preview the interface without starting the API, run the frontend in demo mode:
+
+```bash
+cd frontend
+VITE_DEMO_MODE=true npm run dev
+# or open http://localhost:5173/?demo=1
+```
+
 ### No GPU: run the generator through Ollama
 
 The embedder and reranker stay local; only the generator moves to Ollama.

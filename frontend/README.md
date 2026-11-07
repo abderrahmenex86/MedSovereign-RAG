@@ -18,6 +18,17 @@ cp .env.example .env
 # edit VITE_API_URL
 ```
 
+For UI work without the backend, use demo mode:
+
+```bash
+VITE_DEMO_MODE=true npm run dev
+# or open http://localhost:5173/?demo=1
+```
+
+Demo mode simulates streaming tokens, sources, and the reasoning trace entirely
+in the browser. The interface shows a **Demo** badge and “Demo mode · sample
+evidence” in the sidebar so it is never confused with a live run.
+
 ## Scripts
 
 | Command | Purpose |

@@ -1,3 +1,5 @@
+import { DEMO_HEALTH, demoStreamQuery, isDemoMode } from './demo';
+
 const DEFAULT_API_URL = 'http://localhost:8000';
 const env = import.meta.env || {};
 
@@ -5,6 +7,8 @@ export const API_URL = (env.VITE_API_URL || DEFAULT_API_URL).replace(
     /\/+$/,
     ''
 );
+
+export const DEMO_MODE = isDemoMode();
 
 const errorDetail = async (response) => {
     try {
@@ -18,6 +22,8 @@ const errorDetail = async (response) => {
 };
 
 export async function fetchHealth({ signal } = {}) {
+    if (DEMO_MODE) return DEMO_HEALTH;
+
     const response = await fetch(`${API_URL}/health`, { signal });
 
     if (!response.ok) {
@@ -28,7 +34,7 @@ export async function fetchHealth({ signal } = {}) {
 }
 
 export async function cancelRequest(requestId) {
-    if (!requestId) return;
+    if (DEMO_MODE || !requestId) return;
 
     try {
         await fetch(`${API_URL}/api/cancel`, {
@@ -50,6 +56,11 @@ export async function cancelRequest(requestId) {
  * line is complete; parsing per-chunk loses answers at random.
  */
 export async function* streamQuery(payload, { signal } = {}) {
+    if (DEMO_MODE) {
+        yield* demoStreamQuery(payload, { signal });
+        return;
+    }
+
     const response = await fetch(`${API_URL}/api/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

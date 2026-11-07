@@ -56,7 +56,10 @@ export const Sidebar = ({ health }) => {
     const corpusLabel =
         health?.corpus_format === 'jsonl' ? 'Literature' : 'MedQuad';
     const statusLabel =
-        health ? `${corpusLabel} · ${health.generator}` : 'API offline';
+        health?.demo ?
+            'Demo mode · sample evidence'
+        :   health ? `${corpusLabel} · ${health.generator}`
+        :   'API offline';
 
     return (
         <>
@@ -166,7 +169,10 @@ export const Sidebar = ({ health }) => {
                             aria-hidden='true'
                             className={cn(
                                 'h-1.5 w-1.5 rounded-full',
-                                health ? 'bg-success' : 'bg-faint'
+                                health?.demo ?
+                                    'bg-warning'
+                                : health ? 'bg-success'
+                                : 'bg-faint'
                             )}
                         />
                         <p
@@ -193,7 +199,8 @@ const sourceTitle = (source) =>
 
 const sourceLabel = (source) => {
     if (!source.source) return 'Source';
-    return source.source === 'pubmed' ? 'PubMed' : source.source;
+    if (source.source === 'pubmed') return 'PubMed';
+    return source.source.charAt(0).toUpperCase() + source.source.slice(1);
 };
 
 const citation = (source) =>

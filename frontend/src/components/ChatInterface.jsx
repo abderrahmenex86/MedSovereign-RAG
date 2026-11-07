@@ -13,7 +13,12 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useChatStore } from '../store';
-import { fetchHealth, cancelRequest, streamQuery } from '../lib/api';
+import {
+    fetchHealth,
+    cancelRequest,
+    streamQuery,
+    DEMO_MODE,
+} from '../lib/api';
 import { EvidencePanel, Sidebar, Wordmark } from './AgentUI';
 import { Markdown } from './Markdown';
 import { Badge, Button, Spinner } from './ui';
@@ -414,6 +419,9 @@ export const ChatInterface = () => {
                     </div>
 
                     <div className='ml-auto flex items-center gap-1.5'>
+                        {DEMO_MODE && (
+                            <Badge variant='warning'>Demo</Badge>
+                        )}
                         <Button
                             variant='outline'
                             size='sm'
