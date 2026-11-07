@@ -4,13 +4,13 @@ import { cn } from '../lib/utils';
 
 const buttonVariants = {
     primary:
-        'bg-navy-800 text-white hover:bg-navy-700 active:bg-navy-900 shadow-sm',
-    secondary: 'bg-navy-50 text-navy-800 hover:bg-navy-100',
+        'bg-navy-800 text-white hover:bg-navy-700 active:bg-navy-900 shadow-sm dark:bg-navy-600 dark:hover:bg-navy-500 dark:active:bg-navy-700',
+    secondary: 'bg-navy-50 text-ink hover:bg-navy-100',
     outline:
-        'border border-line bg-white text-ink-soft hover:border-navy-200 hover:bg-navy-50 hover:text-navy-800',
+        'border border-line bg-panel text-ink-soft hover:border-navy-200 hover:bg-navy-50 hover:text-ink',
     ghost: 'text-muted hover:bg-surface hover:text-ink',
     danger:
-        'border border-danger/25 bg-white text-danger hover:bg-danger-soft',
+        'border border-danger/25 bg-panel text-danger hover:bg-danger-soft',
 };
 
 const buttonSizes = {
@@ -46,7 +46,7 @@ export const Button = forwardRef(function Button(
 
 export const Badge = ({ variant = 'muted', className, children }) => {
     const variants = {
-        navy: 'bg-navy-50 text-navy-700 ring-navy-100',
+        navy: 'bg-navy-50 text-accent ring-navy-100',
         muted: 'bg-surface text-muted ring-line',
         success: 'bg-success-soft text-success ring-success/15',
         warning: 'bg-warning-soft text-warning ring-warning/15',
@@ -86,7 +86,7 @@ export const Tabs = ({ items, value, onChange, className }) => (
                     className={cn(
                         'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11.5px] font-medium transition-colors',
                         active ?
-                            'bg-white text-navy-800 shadow-sm ring-1 ring-line'
+                            'bg-panel text-ink shadow-sm ring-1 ring-line'
                         :   'text-muted hover:text-ink'
                     )}>
                     {item.label}
@@ -95,8 +95,8 @@ export const Tabs = ({ items, value, onChange, className }) => (
                             className={cn(
                                 'inline-flex min-w-4 items-center justify-center rounded px-1 text-[10px]',
                                 active ?
-                                    'bg-navy-50 text-navy-700'
-                                :   'bg-white/70 text-muted'
+                                    'bg-navy-50 text-accent'
+                                :   'bg-panel/70 text-muted'
                             )}>
                             {item.count}
                         </span>

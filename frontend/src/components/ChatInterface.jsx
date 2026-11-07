@@ -6,12 +6,16 @@ import {
     Copy,
     FileText,
     Menu,
+    Moon,
     PanelLeft,
+    Pencil,
     Send,
     Square,
     Stethoscope,
+    Sun,
     Trash2,
 } from 'lucide-react';
+import { flushSync } from 'react-dom';
 import { useChatStore } from '../store';
 import {
     fetchHealth,
@@ -19,7 +23,7 @@ import {
     streamQuery,
     DEMO_MODE,
 } from '../lib/api';
-import { EvidencePanel, Sidebar, Wordmark } from './AgentUI';
+import { BrandMark, EvidencePanel, Sidebar } from './AgentUI';
 import { Markdown } from './Markdown';
 import { Badge, Button, Spinner } from './ui';
 import { cn } from '../lib/utils';
@@ -97,13 +101,78 @@ const CopyButton = ({ text }) => {
     );
 };
 
+const EditableTitle = ({ title, onSave, className }) => {
+    const [editing, setEditing] = useState(false);
+    const [value, setValue] = useState(title);
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+        if (editing) inputRef.current?.select();
+    }, [editing]);
+
+    const startEditing = () => {
+        setValue(title);
+        setEditing(true);
+    };
+
+    const commit = () => {
+        const next = value.trim().replace(/\s+/g, ' ').slice(0, 40);
+        if (next) onSave(next);
+        else setValue(title);
+        setEditing(false);
+    };
+
+    if (editing) {
+        return (
+            <input
+                ref={inputRef}
+                value={value}
+                maxLength={40}
+                aria-label='Consultation title'
+                onChange={(event) => setValue(event.target.value)}
+                onBlur={commit}
+                onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        commit();
+                    } else if (event.key === 'Escape') {
+                        setValue(title);
+                        setEditing(false);
+                    }
+                }}
+                className={cn(
+                    'min-w-0 flex-1 rounded-md border border-navy-200 bg-panel px-2 py-1 text-[13px] font-medium text-ink outline-none focus:ring-2 focus:ring-navy-100',
+                    className
+                )}
+            />
+        );
+    }
+
+    return (
+        <button
+            type='button'
+            onClick={startEditing}
+            title='Rename consultation'
+            className='group flex min-w-0 flex-1 items-center gap-1.5 text-left'>
+            <span
+                className={cn('truncate font-medium text-ink', className)}>
+                {title}
+            </span>
+            <Pencil
+                aria-hidden='true'
+                className='h-3 w-3 shrink-0 text-faint opacity-40 transition-opacity group-hover:opacity-100'
+            />
+        </button>
+    );
+};
+
 const EmptyState = ({ onAsk }) => (
     <div className='mx-auto max-w-2xl pt-6 md:pt-14'>
         <div className='text-center'>
-            <span className='mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-navy-800 text-white shadow-sm'>
+            <span className='mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-navy-800 text-white shadow-sm dark:bg-navy-600'>
                 <Stethoscope aria-hidden='true' className='h-6 w-6' />
             </span>
-            <h2 className='mt-5 text-[26px] font-semibold leading-[1.2] tracking-[-0.02em] text-navy-800 md:text-[28px]'>
+            <h2 className='mt-5 text-[26px] font-semibold leading-[1.2] tracking-[-0.02em] text-ink md:text-[28px]'>
                 Ask the evidence.
             </h2>
             <p className='mx-auto mt-3 max-w-md text-[13px] leading-6 text-muted'>
@@ -118,13 +187,13 @@ const EmptyState = ({ onAsk }) => (
                     key={question}
                     type='button'
                     onClick={() => onAsk(question)}
-                    className='group flex items-start justify-between gap-3 rounded-xl border border-line bg-white p-3.5 text-left transition-colors hover:border-navy-200 hover:bg-navy-50/40'>
+                    className='group flex items-start justify-between gap-3 rounded-xl border border-line bg-panel p-3.5 text-left transition-colors hover:border-navy-200 hover:bg-navy-50/40'>
                     <span className='text-[12px] leading-5 text-ink-soft'>
                         {question}
                     </span>
                     <ArrowUpRight
                         aria-hidden='true'
-                        className='mt-0.5 h-4 w-4 shrink-0 text-faint transition-colors group-hover:text-navy-700'
+                        className='mt-0.5 h-4 w-4 shrink-0 text-faint transition-colors group-hover:text-accent'
                     />
                 </button>
             ))}
@@ -151,6 +220,10 @@ export const ChatInterface = () => {
         clearChat,
         addThinkingStep,
         setSources,
+        renameSession,
+        applyGeneratedTitle,
+        theme,
+        toggleTheme,
     } = useChatStore();
 
     const [input, setInput] = useState('');
@@ -170,6 +243,10 @@ export const ChatInterface = () => {
     const validSourceCount = sources.filter(
         (source) => source?.text && !source.text.includes('CONTEXT_MISSING')
     ).length;
+
+    useEffect(() => {
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+    }, [theme]);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -210,12 +287,50 @@ export const ChatInterface = () => {
         cancelRequest(activeRequestIdRef.current);
     };
 
+    const handleThemeToggle = (event) => {
+        const nextTheme = theme === 'dark' ? 'light' : 'dark';
+        const reduceMotion = window.matchMedia(
+            '(prefers-reduced-motion: reduce)'
+        ).matches;
+
+        const applyTheme = () => {
+            document.documentElement.classList.toggle(
+                'dark',
+                nextTheme === 'dark'
+            );
+            flushSync(() => toggleTheme());
+        };
+
+        if (!document.startViewTransition || reduceMotion) {
+            applyTheme();
+            return;
+        }
+
+        const rect = event.currentTarget.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        const radius = Math.hypot(
+            Math.max(x, window.innerWidth - x),
+            Math.max(y, window.innerHeight - y)
+        );
+
+        document.documentElement.style.setProperty('--theme-x', `${x}px`);
+        document.documentElement.style.setProperty('--theme-y', `${y}px`);
+        document.documentElement.style.setProperty(
+            '--theme-radius',
+            `${radius}px`
+        );
+        document.startViewTransition(applyTheme);
+    };
+
     const sendQuery = async (rawQuery) => {
         const userQuery = rawQuery.trim();
         if (!userQuery || isGenerating) return;
 
         const sessionId = activeSessionId;
         const assistantId = newMessageId();
+        const isFirstMessage =
+            (activeSession?.messages || EMPTY_MESSAGES).length === 0;
 
         addMessage(sessionId, {
             role: 'user',
@@ -254,6 +369,7 @@ export const ChatInterface = () => {
                 {
                     query: userQuery,
                     request_id: requestId,
+                    generate_title: isFirstMessage,
                     max_retries: 3,
                     top_k_retrieve: 15,
                     top_k_generate: 3,
@@ -265,6 +381,10 @@ export const ChatInterface = () => {
                 armWatchdog();
 
                 switch (payload.event) {
+                    case 'title':
+                        applyGeneratedTitle(sessionId, payload.data || '');
+                        break;
+
                     case 'status':
                         setLiveStatus(payload.message || '');
                         addThinkingStep(sessionId, {
@@ -378,8 +498,8 @@ export const ChatInterface = () => {
             <Sidebar health={health} />
 
             <section className='flex h-full min-w-0 flex-1 flex-col'>
-                <header className='flex h-16 shrink-0 items-center gap-3 border-b border-line bg-white/90 px-4 backdrop-blur md:px-6'>
-                    <div className='flex min-w-0 items-center gap-3'>
+                <header className='flex h-16 shrink-0 items-center gap-3 border-b border-line bg-panel/90 px-4 backdrop-blur md:px-6'>
+                    <div className='flex min-w-0 flex-1 items-center gap-3'>
                         <Button
                             variant='ghost'
                             size='icon'
@@ -403,24 +523,64 @@ export const ChatInterface = () => {
                             </Button>
                         )}
 
-                        <div className='min-w-0 md:hidden'>
-                            <Wordmark compact />
+                        <div className='flex min-w-0 flex-1 items-center gap-2 md:hidden'>
+                            <BrandMark />
+                            <EditableTitle
+                                title={
+                                    activeSession?.title || 'New consultation'
+                                }
+                                onSave={(title) =>
+                                    renameSession(activeSessionId, title)
+                                }
+                                className='text-[12.5px]'
+                            />
                         </div>
 
                         <div className='hidden min-w-0 md:block'>
-                            <h1 className='truncate text-[14px] font-medium text-ink'>
-                                {activeSession?.title || 'New consultation'}
-                            </h1>
-                            <p className='mt-0.5 text-[11px] text-muted'>
-                                Ask a clinical question. The answer cites its
-                                sources.
-                            </p>
+                            <EditableTitle
+                                title={
+                                    activeSession?.title || 'New consultation'
+                                }
+                                onSave={(title) =>
+                                    renameSession(activeSessionId, title)
+                                }
+                                className='text-[14px]'
+                            />
                         </div>
                     </div>
 
                     <div className='ml-auto flex items-center gap-1.5'>
+                        <Button
+                            variant='ghost'
+                            size='icon'
+                            onClick={handleThemeToggle}
+                            aria-label={
+                                theme === 'dark' ?
+                                    'Switch to light mode'
+                                :   'Switch to dark mode'
+                            }
+                            title={
+                                theme === 'dark' ?
+                                    'Switch to light mode'
+                                :   'Switch to dark mode'
+                            }>
+                            {theme === 'dark' ?
+                                <Sun
+                                    aria-hidden='true'
+                                    className='h-4 w-4'
+                                />
+                            :   <Moon
+                                    aria-hidden='true'
+                                    className='h-4 w-4'
+                                />
+                            }
+                        </Button>
                         {DEMO_MODE && (
-                            <Badge variant='warning'>Demo</Badge>
+                            <Badge
+                                variant='warning'
+                                className='hidden sm:inline-flex'>
+                                Demo
+                            </Badge>
                         )}
                         <Button
                             variant='outline'
@@ -477,7 +637,7 @@ export const ChatInterface = () => {
                                     <article
                                         key={message.id}
                                         className='flex justify-end'>
-                                        <div className='max-w-[85%] rounded-2xl rounded-br-md bg-navy-800 px-4 py-2.5 text-white shadow-sm'>
+                                        <div className='max-w-[85%] rounded-2xl rounded-br-md bg-navy-800 px-4 py-2.5 text-white shadow-sm dark:bg-navy-600'>
                                             <p className='whitespace-pre-wrap text-[13px] leading-6'>
                                                 {message.content}
                                             </p>
@@ -493,7 +653,7 @@ export const ChatInterface = () => {
                                 <article
                                     key={message.id}
                                     className='group flex gap-3'>
-                                    <span className='mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-navy-700'>
+                                    <span className='mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-accent'>
                                         <Stethoscope
                                             aria-hidden='true'
                                             className='h-4 w-4'
@@ -538,7 +698,7 @@ export const ChatInterface = () => {
                                             </div>
                                         :   isGenerating ?
                                             <div className='flex items-center gap-2 text-[12.5px] text-muted'>
-                                                <Spinner className='h-3.5 w-3.5 text-navy-600' />
+                                                <Spinner className='h-3.5 w-3.5 text-accent' />
                                                 Searching the literature…
                                             </div>
                                         :   null}
@@ -549,11 +709,11 @@ export const ChatInterface = () => {
                     </div>
                 </div>
 
-                <footer className='shrink-0 border-t border-line bg-white px-3 py-3 md:px-8 md:py-4'>
+                <footer className='shrink-0 border-t border-line bg-panel px-3 py-3 md:px-8 md:py-4'>
                     <div className='mx-auto max-w-3xl'>
                         <form
                             onSubmit={handleSubmit}
-                            className='rounded-xl border border-line bg-white p-2 shadow-[0_1px_2px_rgba(11,37,69,0.04)] transition-shadow focus-within:border-navy-200 focus-within:ring-2 focus-within:ring-navy-100/70'>
+                            className='rounded-xl border border-line bg-panel p-2 shadow-[0_1px_2px_rgba(11,37,69,0.04)] transition-shadow focus-within:border-navy-200 focus-within:ring-2 focus-within:ring-navy-100/70'>
                             <textarea
                                 ref={textareaRef}
                                 value={input}
@@ -617,11 +777,6 @@ export const ChatInterface = () => {
                                 }
                             </div>
                         </form>
-
-                        <p className='mt-2 text-center text-[10px] text-faint'>
-                            Not a medical device. For research and demonstration
-                            only.
-                        </p>
                     </div>
                 </footer>
             </section>

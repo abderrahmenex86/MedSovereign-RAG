@@ -42,18 +42,18 @@ const components = {
             href={href}
             target='_blank'
             rel='noreferrer noopener'
-            className='font-medium text-navy-600 underline decoration-navy-200 underline-offset-4 hover:text-navy-800'>
+            className='font-medium text-accent underline decoration-navy-200 underline-offset-4 hover:text-ink'>
             {children}
         </a>
     ),
     code: ({ className, children }) =>
         className?.startsWith('language-') ?
             <code className='font-mono text-[0.85em]'>{children}</code>
-        :   <code className='rounded-md bg-surface px-1.5 py-0.5 font-mono text-[0.85em] text-navy-800 ring-1 ring-line'>
+        :   <code className='rounded-md bg-surface px-1.5 py-0.5 font-mono text-[0.85em] text-ink ring-1 ring-line'>
                 {children}
             </code>,
     pre: ({ children }) => (
-        <pre className='mb-3 overflow-x-auto rounded-lg bg-navy-800 p-3 text-[12px] leading-6 text-navy-50'>
+        <pre className='mb-3 overflow-x-auto rounded-lg bg-navy-800 p-3 text-[12px] leading-6 text-white/90 dark:bg-surface-strong dark:text-ink'>
             {children}
         </pre>
     ),

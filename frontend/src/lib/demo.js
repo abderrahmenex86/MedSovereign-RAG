@@ -238,6 +238,15 @@ function scenarioFor(query) {
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const TITLES = {
+    bronchitis: 'Acute bronchitis treatment',
+    diabetes: 'Managing type 2 diabetes',
+    backpain: 'Low back pain red flags',
+    acl: 'ACL rehabilitation',
+    default: 'Clinical evidence demo',
+    refused: 'Unverified clinical question',
+};
+
 async function* eventStream(payload, signal) {
     const scenario = scenarioFor(payload.query || '');
     const started = Date.now();
@@ -247,6 +256,8 @@ async function* eventStream(payload, signal) {
         critique: 'PASS',
         outcome: 'passed',
     };
+
+    yield { event: 'title', data: TITLES[scenario] };
 
     yield {
         event: 'status',

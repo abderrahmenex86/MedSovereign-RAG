@@ -1,5 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
+
+export const CHAT_STORAGE_KEY = 'medsovereign-v3-storage';
 
 const uid = () =>
     typeof crypto !== 'undefined' && crypto.randomUUID ?
@@ -9,6 +11,7 @@ const uid = () =>
 const newSession = () => ({
     id: uid(),
     title: 'New consultation',
+    titleLocked: false,
     messages: [],
     currentThinking: [],
     currentSources: [],
@@ -17,9 +20,12 @@ const newSession = () => ({
 const initialSession = newSession();
 
 const normalizeTitle = (title) => {
-    if (typeof title !== 'string' || !title.trim()) return 'New consultation';
-    if (title === 'New Clinical Query') return 'New consultation';
-    return title;
+    if (typeof title !== 'string') return 'New consultation';
+
+    const cleaned = title.trim().replace(/\s+/g, ' ');
+    if (!cleaned) return 'New consultation';
+    if (cleaned === 'New Clinical Query') return 'New consultation';
+    return cleaned.slice(0, 40);
 };
 
 const normalizeMessage = (message) => ({
@@ -35,6 +41,7 @@ const normalizeMessage = (message) => ({
 const normalizeSession = (session) => ({
     id: session?.id ?? uid(),
     title: normalizeTitle(session?.title),
+    titleLocked: Boolean(session?.titleLocked),
     messages: Array.isArray(session?.messages) ?
         session.messages.map(normalizeMessage)
     :   [],
@@ -66,11 +73,16 @@ export const useChatStore = create(
             leftPanelOpen: isDesktop(),
             sidePanelOpen: isDesktop(),
             currentDraft: '',
+            theme: 'light',
 
             toggleLeftPanel: () =>
                 set((state) => ({ leftPanelOpen: !state.leftPanelOpen })),
             toggleSidePanel: () =>
                 set((state) => ({ sidePanelOpen: !state.sidePanelOpen })),
+            toggleTheme: () =>
+                set((state) => ({
+                    theme: state.theme === 'dark' ? 'light' : 'dark',
+                })),
             setGenerating: (value) => set({ isGenerating: value }),
             setCurrentDraft: (text) => set({ currentDraft: text }),
             appendDraft: (text) =>
@@ -120,9 +132,8 @@ export const useChatStore = create(
                         return {
                             ...session,
                             title:
-                                isFirstUserMessage ?
-                                    content.slice(0, 40) +
-                                    (content.length > 40 ? '...' : '')
+                                isFirstUserMessage && !session.titleLocked ?
+                                    normalizeTitle(content.slice(0, 40))
                                 :   session.title,
                             messages: [
                                 ...session.messages,
@@ -133,6 +144,27 @@ export const useChatStore = create(
                             ],
                         };
                     })
+                ),
+
+            renameSession: (sessionId, title) =>
+                set((state) =>
+                    updateSession(state, sessionId, (session) => ({
+                        ...session,
+                        title: normalizeTitle(title),
+                        titleLocked: true,
+                    }))
+                ),
+
+            applyGeneratedTitle: (sessionId, title) =>
+                set((state) =>
+                    updateSession(state, sessionId, (session) =>
+                        session.titleLocked ?
+                            session
+                        :   {
+                                ...session,
+                                title: normalizeTitle(title),
+                            }
+                    )
                 ),
 
             updateMessage: (sessionId, messageId, patch) =>
@@ -185,14 +217,18 @@ export const useChatStore = create(
                 })),
         }),
         {
-            name: 'medsovereign-v3-storage',
-            version: 1,
+            name: CHAT_STORAGE_KEY,
+            // Conversations, titles, and theme live in localStorage. Only the
+            // in-flight draft and generating flag are deliberately excluded.
+            storage: createJSONStorage(() => localStorage),
+            version: 2,
             migrate: (persisted) => persisted,
             partialize: (state) => ({
                 sessions: state.sessions,
                 activeSessionId: state.activeSessionId,
                 leftPanelOpen: state.leftPanelOpen,
                 sidePanelOpen: state.sidePanelOpen,
+                theme: state.theme,
             }),
             merge: (persisted, current) => {
                 const storedSessions = Array.isArray(persisted?.sessions) ?
@@ -238,6 +274,7 @@ export const useChatStore = create(
                             (persisted?.sidePanelOpen ??
                             current.sidePanelOpen)
                         :   false,
+                    theme: persisted?.theme === 'dark' ? 'dark' : 'light',
                     // Transient state must never be rehydrated: a reload while
                     // a request was in flight would otherwise disable the UI.
                     isGenerating: false,

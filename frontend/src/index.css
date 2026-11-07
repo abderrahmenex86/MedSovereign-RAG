@@ -1,19 +1,13 @@
 @import 'tailwindcss';
 
-@font-face {
-    font-family: 'Cubao Free Narrow';
-    src: url('/fonts/cubao-free-narrow.woff2') format('woff2');
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-}
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
     --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
-    --font-brand: 'Cubao Free Narrow', 'Poppins', sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
     --color-canvas: #ffffff;
+    --color-panel: #ffffff;
     --color-surface: #f7f9fc;
     --color-surface-strong: #eef3f9;
     --color-line: #e3e9f2;
@@ -23,6 +17,7 @@
     --color-ink-soft: #3d516a;
     --color-muted: #6b7c93;
     --color-faint: #8d9aad;
+    --color-accent: #1d4e89;
 
     --color-navy-50: #f0f4fa;
     --color-navy-100: #dfe8f4;
@@ -47,6 +42,34 @@
     color-scheme: light;
 }
 
+.dark {
+    color-scheme: dark;
+
+    --color-canvas: #07111f;
+    --color-panel: #0b1728;
+    --color-surface: #101f33;
+    --color-surface-strong: #16283f;
+    --color-line: #1b2c42;
+    --color-line-strong: #2a3f59;
+
+    --color-ink: #e8eef7;
+    --color-ink-soft: #c2cfdf;
+    --color-muted: #8fa2ba;
+    --color-faint: #6f829a;
+    --color-accent: #8fb8e0;
+
+    --color-navy-50: #0e2036;
+    --color-navy-100: #152b45;
+    --color-navy-200: #23405f;
+
+    --color-success: #5fd3a3;
+    --color-success-soft: #0f2a22;
+    --color-warning: #f0b35b;
+    --color-warning-soft: #2a2111;
+    --color-danger: #ff8a80;
+    --color-danger-soft: #2a1513;
+}
+
 html,
 body,
 #root {
@@ -68,14 +91,44 @@ body {
 }
 
 :focus-visible {
-    outline: 2px solid var(--color-navy-500);
+    outline: 2px solid var(--color-accent);
     outline-offset: 2px;
     border-radius: 4px;
 }
 
 ::selection {
     background-color: var(--color-navy-100);
-    color: var(--color-navy-800);
+    color: var(--color-ink);
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+    animation: theme-reveal 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes theme-reveal {
+    from {
+        clip-path: circle(
+            0px at var(--theme-x, 50%) var(--theme-y, 50%)
+        );
+    }
+    to {
+        clip-path: circle(
+            var(--theme-radius, 100vmax) at var(--theme-x, 50%)
+                var(--theme-y, 50%)
+        );
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-new(root) {
+        animation: none;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

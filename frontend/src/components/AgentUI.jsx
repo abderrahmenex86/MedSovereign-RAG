@@ -21,20 +21,21 @@ import { useChatStore } from '../store';
 import { Badge, Button, Tabs } from './ui';
 import { cn } from '../lib/utils';
 
-export const Wordmark = ({ compact = false }) => (
+export const BrandMark = ({ className }) => (
+    <span
+        className={cn(
+            'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-navy-800 text-white shadow-sm dark:bg-navy-600',
+            className
+        )}>
+        <Stethoscope aria-hidden='true' className='h-[18px] w-[18px]' />
+    </span>
+);
+
+export const Wordmark = () => (
     <div className='flex min-w-0 items-center gap-2.5'>
-        <span className='flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-navy-800 text-white shadow-sm'>
-            <Stethoscope aria-hidden='true' className='h-[18px] w-[18px]' />
-        </span>
-        <span className={cn('min-w-0', compact && 'hidden sm:block')}>
-            <span className='block truncate font-brand text-[18px] leading-none tracking-wide text-navy-800'>
-                MedSovereign
-            </span>
-            {!compact && (
-                <span className='mt-1 block truncate text-[10.5px] font-medium text-muted'>
-                    Clinical evidence assistant
-                </span>
-            )}
+        <BrandMark />
+        <span className='truncate text-[17px] font-semibold tracking-tight text-ink'>
+            MedSovereign
         </span>
     </div>
 );
@@ -67,13 +68,13 @@ export const Sidebar = ({ health }) => {
                 type='button'
                 aria-label='Dismiss consultations'
                 onClick={toggleLeftPanel}
-                className='fixed inset-0 z-30 bg-navy-900/20 backdrop-blur-[2px] md:hidden'
+                className='fixed inset-0 z-30 bg-navy-900/20 backdrop-blur-[2px] md:hidden dark:bg-black/60'
             />
 
             <aside
                 aria-label='Consultations'
-                className='fixed inset-y-0 left-0 z-40 flex h-full w-[272px] shrink-0 flex-col border-r border-line bg-white md:static md:z-auto'>
-                <div className='flex items-start justify-between gap-2 px-4 pt-4 pb-5'>
+                className='fixed inset-y-0 left-0 z-40 flex h-full w-[272px] shrink-0 flex-col border-r border-line bg-panel md:static md:z-auto'>
+                <div className='flex h-16 shrink-0 items-center justify-between gap-2 border-b border-line px-4'>
                     <Wordmark />
                     <button
                         type='button'
@@ -84,7 +85,7 @@ export const Sidebar = ({ health }) => {
                     </button>
                 </div>
 
-                <div className='px-3'>
+                <div className='px-3 pt-4'>
                     <Button
                         variant='primary'
                         onClick={createNewSession}
@@ -115,7 +116,7 @@ export const Sidebar = ({ health }) => {
                                         className={cn(
                                             'group flex items-center rounded-lg transition-colors',
                                             isActive ?
-                                                'bg-navy-50 text-navy-800'
+                                                'bg-navy-50 text-ink'
                                             :   'text-ink-soft hover:bg-surface'
                                         )}>
                                         <button
@@ -134,7 +135,7 @@ export const Sidebar = ({ health }) => {
                                                 className={cn(
                                                     'h-3.5 w-3.5 shrink-0',
                                                     isActive ?
-                                                        'text-navy-600'
+                                                        'text-accent'
                                                     :   'text-faint'
                                                 )}
                                             />
@@ -150,7 +151,7 @@ export const Sidebar = ({ health }) => {
                                             }
                                             disabled={isGenerating}
                                             aria-label={`Delete ${session.title}`}
-                                            className='mr-1 rounded-md p-1.5 text-faint opacity-100 transition-opacity hover:bg-white hover:text-danger focus-visible:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed md:opacity-0'>
+                                            className='mr-1 rounded-md p-1.5 text-faint opacity-100 transition-opacity hover:bg-panel hover:text-danger focus-visible:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed md:opacity-0'>
                                             <Trash2
                                                 aria-hidden='true'
                                                 className='h-3.5 w-3.5'
@@ -187,6 +188,10 @@ export const Sidebar = ({ health }) => {
                     </div>
                     <p className='mt-1.5 text-[10px] text-faint'>
                         Private by design. Runs locally.
+                    </p>
+                    <p className='mt-1 text-[10px] leading-4 text-faint'>
+                        Not a medical device. For research and demonstration
+                        only.
                     </p>
                 </div>
             </aside>
@@ -245,12 +250,12 @@ const SourcesList = ({ sources }) => {
                     <li key={source.chunk_id || `${source.doc_id}-${index}`}>
                         <details className='group'>
                             <summary className='flex cursor-pointer list-none items-start gap-3 px-4 py-3.5 transition-colors hover:bg-surface/60'>
-                                <span className='mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-navy-50 text-[10.5px] font-semibold text-navy-700 ring-1 ring-navy-100'>
+                                <span className='mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-navy-50 text-[10.5px] font-semibold text-accent ring-1 ring-navy-100'>
                                     {index + 1}
                                 </span>
 
                                 <span className='min-w-0 flex-1'>
-                                    <span className='block text-[12.5px] font-medium leading-5 text-ink group-open:text-navy-800'>
+                                    <span className='block text-[12.5px] font-medium leading-5 text-ink group-open:text-ink'>
                                         {sourceTitle(source)}
                                     </span>
                                     <span className='mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10.5px] text-muted'>
@@ -272,7 +277,7 @@ const SourcesList = ({ sources }) => {
 
                             <div className='px-4 pb-4 pl-[52px]'>
                                 {source.section && (
-                                    <p className='mb-1 text-[10px] font-semibold tracking-wide text-navy-600 uppercase'>
+                                    <p className='mb-1 text-[10px] font-semibold tracking-wide text-accent uppercase'>
                                         {source.section}
                                     </p>
                                 )}
@@ -297,7 +302,7 @@ const SourcesList = ({ sources }) => {
                                             href={source.url}
                                             target='_blank'
                                             rel='noreferrer noopener'
-                                            className='inline-flex items-center gap-1 font-medium text-navy-600 hover:text-navy-800'>
+                                            className='inline-flex items-center gap-1 font-medium text-accent hover:text-ink'>
                                             Open source
                                             <ArrowUpRight
                                                 aria-hidden='true'
@@ -345,14 +350,14 @@ const ReasoningList = ({ steps }) => {
                         className='flex items-start gap-2.5'>
                         <span
                             className={cn(
-                                'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white ring-1',
+                                'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-panel ring-1',
                                 failed ? 'ring-danger/30' : 'ring-line'
                             )}>
                             <Icon
                                 aria-hidden='true'
                                 className={cn(
                                     'h-2.5 w-2.5',
-                                    failed ? 'text-danger' : 'text-navy-600'
+                                    failed ? 'text-danger' : 'text-accent'
                                 )}
                             />
                         </span>
@@ -399,17 +404,17 @@ export const EvidencePanel = () => {
                 type='button'
                 aria-label='Dismiss evidence'
                 onClick={toggleSidePanel}
-                className='fixed inset-0 z-30 bg-navy-900/20 backdrop-blur-[2px] md:hidden'
+                className='fixed inset-0 z-30 bg-navy-900/20 backdrop-blur-[2px] md:hidden dark:bg-black/60'
             />
 
             <aside
                 aria-label='Evidence'
-                className='fixed inset-y-0 right-0 z-40 flex h-full w-[88vw] max-w-sm shrink-0 flex-col border-l border-line bg-white md:static md:z-auto md:w-[348px] md:max-w-none'>
-                <div className='flex items-center justify-between border-b border-line px-4 py-3.5'>
+                className='fixed inset-y-0 right-0 z-40 flex h-full w-[88vw] max-w-sm shrink-0 flex-col border-l border-line bg-panel md:static md:z-auto md:w-[348px] md:max-w-none'>
+                <div className='flex h-16 shrink-0 items-center justify-between border-b border-line px-4'>
                     <div className='flex items-center gap-2'>
                         <FileText
                             aria-hidden='true'
-                            className='h-4 w-4 text-navy-600'
+                            className='h-4 w-4 text-accent'
                         />
                         <h2 className='text-[13px] font-semibold text-ink'>
                             Evidence
@@ -448,13 +453,6 @@ export const EvidencePanel = () => {
                     {tab === 'sources' ?
                         <SourcesList sources={validSources} />
                     :   <ReasoningList steps={currentThinking} />}
-                </div>
-
-                <div className='border-t border-line px-4 py-2.5'>
-                    <p className='text-[10px] leading-4 text-faint'>
-                        Every answer is checked against these passages before it
-                        is shown.
-                    </p>
                 </div>
             </aside>
         </>

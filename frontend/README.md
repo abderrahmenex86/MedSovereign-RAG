@@ -53,10 +53,8 @@ evidence” in the sidebar so it is never confused with a live run.
 ## Design
 
 The interface is a white, navy-accented clinical workspace. Poppins carries the
-interface, body text, and headlines; Cubao Free Narrow is used only for the
-wordmark. Both typefaces are SIL OFL 1.1. Poppins is loaded from Google Fonts,
-while the Cubao file is bundled in `public/fonts/` with the license in
-`public/fonts/CUBAO-LICENSE.txt`.
+interface, body text, headlines, and wordmark. The typeface is SIL OFL 1.1 and is
+loaded from Google Fonts.
 
 Sessions and panel preferences are persisted in `localStorage`. Transient state
 (`isGenerating`, the in-flight draft) is deliberately excluded so a reload
