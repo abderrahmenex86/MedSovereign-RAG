@@ -13,7 +13,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useChatStore } from '../store';
-import { fetchHealth, streamQuery } from '../lib/api';
+import { fetchHealth, cancelRequest, streamQuery } from '../lib/api';
 import { EvidencePanel, Sidebar, Wordmark } from './AgentUI';
 import { Markdown } from './Markdown';
 import { Badge, Button, Spinner } from './ui';
@@ -152,6 +152,7 @@ export const ChatInterface = () => {
     const [liveStatus, setLiveStatus] = useState('');
     const [health, setHealth] = useState(null);
     const controllerRef = useRef(null);
+    const activeRequestIdRef = useRef(null);
     const transcriptRef = useRef(null);
     const textareaRef = useRef(null);
     const stickToBottomRef = useRef(true);
@@ -201,6 +202,7 @@ export const ChatInterface = () => {
 
     const handleStop = () => {
         controllerRef.current?.abort();
+        cancelRequest(activeRequestIdRef.current);
     };
 
     const sendQuery = async (rawQuery) => {
@@ -229,6 +231,8 @@ export const ChatInterface = () => {
 
         const controller = new AbortController();
         controllerRef.current = controller;
+        const requestId = newMessageId();
+        activeRequestIdRef.current = requestId;
 
         let watchdog = null;
         const armWatchdog = () => {
@@ -244,6 +248,7 @@ export const ChatInterface = () => {
             const events = streamQuery(
                 {
                     query: userQuery,
+                    request_id: requestId,
                     max_retries: 3,
                     top_k_retrieve: 15,
                     top_k_generate: 3,
@@ -352,6 +357,7 @@ export const ChatInterface = () => {
         } finally {
             clearTimeout(watchdog);
             controllerRef.current = null;
+            activeRequestIdRef.current = null;
             setGenerating(false);
             setLiveStatus('');
         }

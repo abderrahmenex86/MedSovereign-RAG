@@ -27,6 +27,21 @@ export async function fetchHealth({ signal } = {}) {
     return response.json();
 }
 
+export async function cancelRequest(requestId) {
+    if (!requestId) return;
+
+    try {
+        await fetch(`${API_URL}/api/cancel`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ request_id: requestId }),
+            keepalive: true,
+        });
+    } catch {
+        // The request may already have finished; cancellation is best effort.
+    }
+}
+
 /**
  * Stream NDJSON events from the backend.
  *

@@ -26,6 +26,7 @@ class QueryPayload(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     query: str = Field(min_length=2, max_length=APP_CONFIG.max_query_length)
+    request_id: str | None = Field(default=None, max_length=64)
     max_retries: int = Field(
         default=3,
         ge=1,
@@ -34,6 +35,12 @@ class QueryPayload(BaseModel):
     )
     top_k_retrieve: int = Field(default=15, ge=1, le=50)
     top_k_generate: int = Field(default=3, ge=1, le=10)
+
+
+class CancelPayload(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    request_id: str = Field(min_length=1, max_length=64)
 
 
 def _build_generator(config, device):
@@ -59,6 +66,8 @@ async def lifespan(app: FastAPI):
     app.state.config = config
     app.state.ready = False
     app.state.semaphore = asyncio.Semaphore(config.max_concurrent_requests)
+    app.state.active_requests = {}
+    app.state.cancelled_requests = set()
 
     set_determinism(config.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -149,6 +158,24 @@ async def health(request: Request):
     return {"status": "ok", **state.info}
 
 
+@app.post("/api/cancel")
+async def cancel_agent(payload: CancelPayload, request: Request):
+    state = request.app.state
+    cancel_event = state.active_requests.get(payload.request_id)
+
+    if cancel_event is not None:
+        cancel_event.set()
+        return {"cancelled": True}
+
+    # The Stop button can be clicked before the ask request has registered its
+    # id. Remember it and cancel as soon as that request arrives.
+    state.cancelled_requests.add(payload.request_id)
+    if len(state.cancelled_requests) > 1000:
+        state.cancelled_requests.clear()
+        state.cancelled_requests.add(payload.request_id)
+    return {"cancelled": True}
+
+
 async def _watch_disconnect(request, cancel_event):
     while not cancel_event.is_set():
         if await request.is_disconnected():
@@ -157,7 +184,14 @@ async def _watch_disconnect(request, cancel_event):
         await asyncio.sleep(0.5)
 
 
-async def _stream_events(body, cancel_event, semaphore, request=None):
+async def _stream_events(
+    body,
+    cancel_event,
+    semaphore,
+    request=None,
+    request_id=None,
+    active_requests=None,
+):
     """Bridge the blocking pipeline to the event loop and enforce one job at a time."""
     loop = asyncio.get_running_loop()
     queue: asyncio.Queue[object] = asyncio.Queue()
@@ -214,6 +248,8 @@ async def _stream_events(body, cancel_event, semaphore, request=None):
     finally:
         if watcher is not None:
             watcher.cancel()
+        if request_id and active_requests is not None:
+            active_requests.pop(request_id, None)
 
 
 @app.post("/api/ask")
@@ -235,6 +271,24 @@ async def ask_agent(payload: QueryPayload, request: Request):
     }
 
     cancel_event = threading.Event()
+    active_requests = getattr(state, "active_requests", None)
+    if active_requests is None:
+        active_requests = {}
+        state.active_requests = active_requests
+
+    request_id = payload.request_id
+    if request_id:
+        cancelled_requests = getattr(state, "cancelled_requests", None)
+        if cancelled_requests is None:
+            cancelled_requests = set()
+            state.cancelled_requests = cancelled_requests
+
+        if request_id in cancelled_requests:
+            cancel_event.set()
+            cancelled_requests.discard(request_id)
+
+        active_requests[request_id] = cancel_event
+
     body = execute_agentic_rag(
         payload.query,
         components["hybrid_index"],
@@ -248,7 +302,14 @@ async def ask_agent(payload: QueryPayload, request: Request):
     )
 
     return StreamingResponse(
-        _stream_events(body, cancel_event, state.semaphore, request),
+        _stream_events(
+            body,
+            cancel_event,
+            state.semaphore,
+            request,
+            request_id=request_id,
+            active_requests=active_requests,
+        ),
         media_type="application/x-ndjson",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
