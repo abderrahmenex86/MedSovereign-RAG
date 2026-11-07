@@ -598,12 +598,13 @@ export const ChatInterface = () => {
                             <Badge variant='navy'>{validSourceCount}</Badge>
                         </Button>
                         <Button
-                            variant='ghost'
-                            size='icon'
+                            variant='outline'
+                            size='sm'
                             onClick={() => clearChat(activeSessionId)}
                             disabled={isGenerating}
                             aria-label='Clear conversation'
-                            title='Clear conversation'>
+                            title='Clear conversation'
+                            className='h-8 w-8 px-0'>
                             <Trash2 aria-hidden='true' className='h-4 w-4' />
                         </Button>
                     </div>
