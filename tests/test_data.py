@@ -1,4 +1,5 @@
 import json
+import os
 
 import numpy as np
 import pytest
@@ -126,6 +127,26 @@ def test_index_cache_key_changes_with_chunking(tmp_path):
 
     assert first != second
     assert first != limited
+
+
+def test_index_cache_key_is_content_based(tmp_path):
+    first = tmp_path / "first.json"
+    second = tmp_path / "second.json"
+    different = tmp_path / "different.json"
+
+    first.write_text('[{"Answer": "same"}]', encoding="utf-8")
+    second.write_text('[{"Answer": "same"}]', encoding="utf-8")
+    different.write_text('[{"Answer": "other"}]', encoding="utf-8")
+
+    os.utime(first, (1, 1))
+    os.utime(second, (100, 100))
+
+    assert index_cache_key(first, 300, 50, "model-a") == index_cache_key(
+        second, 300, 50, "model-a"
+    )
+    assert index_cache_key(first, 300, 50, "model-a") != index_cache_key(
+        different, 300, 50, "model-a"
+    )
 
 
 def test_limit_corpus_keeps_whole_documents():

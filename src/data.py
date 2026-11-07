@@ -8,7 +8,7 @@ import faiss
 import numpy as np
 from rank_bm25 import BM25Okapi
 
-CACHE_VERSION = 2
+CACHE_VERSION = 3
 
 
 def chunk_text(text, chunk_size=300, overlap=50):
@@ -86,11 +86,19 @@ def build_index_text(chunk):
     return f"{question}\n{text}"
 
 
+def _corpus_digest(corpus_path):
+    """Hash the file contents so a cache built on another host still matches."""
+    digest = hashlib.sha256()
+    with open(corpus_path, "rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def index_cache_key(corpus_path, chunk_size, overlap, embedder_model, max_documents=0):
-    corpus_stat = os.stat(corpus_path)
+    corpus_hash = _corpus_digest(corpus_path)
     payload = (
-        f"v{CACHE_VERSION}:{Path(corpus_path).name}:{corpus_stat.st_size}:"
-        f"{int(corpus_stat.st_mtime)}:{chunk_size}:{overlap}:{embedder_model}:{max_documents}"
+        f"v{CACHE_VERSION}:{corpus_hash}:{chunk_size}:{overlap}:{embedder_model}:{max_documents}"
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
