@@ -17,6 +17,16 @@ const errorDetail = async (response) => {
     return `Request failed with status ${response.status}`;
 };
 
+export async function fetchHealth({ signal } = {}) {
+    const response = await fetch(`${API_URL}/health`, { signal });
+
+    if (!response.ok) {
+        throw new Error(`Health check failed (${response.status})`);
+    }
+
+    return response.json();
+}
+
 /**
  * Stream NDJSON events from the backend.
  *

@@ -8,13 +8,19 @@ const uid = () =>
 
 const newSession = () => ({
     id: uid(),
-    title: 'New Clinical Query',
+    title: 'New consultation',
     messages: [],
     currentThinking: [],
     currentSources: [],
 });
 
 const initialSession = newSession();
+
+const normalizeTitle = (title) => {
+    if (typeof title !== 'string' || !title.trim()) return 'New consultation';
+    if (title === 'New Clinical Query') return 'New consultation';
+    return title;
+};
 
 const normalizeMessage = (message) => ({
     id: message?.id ?? uid(),
@@ -28,10 +34,7 @@ const normalizeMessage = (message) => ({
 
 const normalizeSession = (session) => ({
     id: session?.id ?? uid(),
-    title:
-        typeof session?.title === 'string' && session.title ?
-            session.title
-        :   'New Clinical Query',
+    title: normalizeTitle(session?.title),
     messages: Array.isArray(session?.messages) ?
         session.messages.map(normalizeMessage)
     :   [],

@@ -1,44 +1,129 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-    Activity,
     AlertCircle,
-    PanelLeftClose,
-    PanelLeftOpen,
-    PanelRightClose,
-    PanelRightOpen,
+    ArrowUpRight,
+    Check,
+    Copy,
+    FileText,
+    Menu,
+    PanelLeft,
     Send,
     Square,
+    Stethoscope,
     Trash2,
 } from 'lucide-react';
 import { useChatStore } from '../store';
-import { streamQuery } from '../lib/api';
-import { LeftPanel, SidePanel } from './AgentUI';
+import { fetchHealth, streamQuery } from '../lib/api';
+import { EvidencePanel, Sidebar, Wordmark } from './AgentUI';
 import { Markdown } from './Markdown';
+import { Badge, Button, Spinner } from './ui';
+import { cn } from '../lib/utils';
+
+const SUGGESTIONS = [
+    'What are the first-line treatments for acute bronchitis?',
+    'How is newly diagnosed type 2 diabetes managed?',
+    'What are the red flags in acute low back pain?',
+    'When is antibiotic prophylaxis indicated before dental procedures?',
+];
 
 const newMessageId = () =>
     typeof crypto !== 'undefined' && crypto.randomUUID ?
         crypto.randomUUID()
     :   String(Date.now());
 
-const EMPTY_MESSAGES = [];
-
 const now = () =>
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-const FailureNotice = ({ error, attempts }) => (
-    <div
-        role='alert'
-        className='flex items-start space-x-2 text-xs font-semibold text-punch-red-300 md:text-sm'>
-        <AlertCircle
-            aria-hidden='true'
-            className='mt-0.5 h-4 w-4 shrink-0 text-punch-red-400'
-        />
-        <span>
-            {error ||
-                `Could not verify this answer against the corpus after ${
-                    attempts ?? 'the maximum number of'
-                } attempt(s).`}
-        </span>
+const EMPTY_MESSAGES = [];
+
+const FailureNotice = ({ error, attempts }) => {
+    const stopped = error === 'Generation stopped.';
+    const message =
+        error ||
+        `The answer could not be verified against the retrieved sources after ${
+            attempts ?? 'the maximum number of'
+        } attempt(s).`;
+
+    return (
+        <div
+            role='alert'
+            className={cn(
+                'flex items-start gap-2 rounded-lg border p-3 text-[12px] leading-5',
+                stopped ?
+                    'border-warning/20 bg-warning-soft text-warning'
+                :   'border-danger/15 bg-danger-soft text-danger'
+            )}>
+            <AlertCircle
+                aria-hidden='true'
+                className='mt-0.5 h-4 w-4 shrink-0'
+            />
+            <span>{message}</span>
+        </div>
+    );
+};
+
+const CopyButton = ({ text }) => {
+    const [copied, setCopied] = useState(false);
+    const timerRef = useRef(null);
+
+    useEffect(() => () => clearTimeout(timerRef.current), []);
+
+    const copy = async () => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopied(true);
+            timerRef.current = setTimeout(() => setCopied(false), 1600);
+        } catch {
+            // Clipboard access can be denied; the answer is still selectable.
+        }
+    };
+
+    return (
+        <button
+            type='button'
+            onClick={copy}
+            aria-label={copied ? 'Answer copied' : 'Copy answer'}
+            title={copied ? 'Copied' : 'Copy answer'}
+            className='rounded-md p-1.5 text-faint opacity-60 transition-opacity hover:bg-surface hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 md:opacity-0'>
+            {copied ?
+                <Check aria-hidden='true' className='h-3.5 w-3.5 text-success' />
+            :   <Copy aria-hidden='true' className='h-3.5 w-3.5' />}
+        </button>
+    );
+};
+
+const EmptyState = ({ onAsk }) => (
+    <div className='mx-auto max-w-2xl pt-6 md:pt-14'>
+        <div className='text-center'>
+            <span className='mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-navy-800 text-white shadow-sm'>
+                <Stethoscope aria-hidden='true' className='h-6 w-6' />
+            </span>
+            <h2 className='mt-5 font-display text-[30px] leading-none text-navy-800'>
+                Ask the evidence.
+            </h2>
+            <p className='mx-auto mt-3 max-w-md text-[13px] leading-6 text-muted'>
+                Grounded answers with sources you can open. Every claim is
+                checked against the retrieved passages.
+            </p>
+        </div>
+
+        <div className='mt-8 grid gap-2 sm:grid-cols-2'>
+            {SUGGESTIONS.map((question) => (
+                <button
+                    key={question}
+                    type='button'
+                    onClick={() => onAsk(question)}
+                    className='group flex items-start justify-between gap-3 rounded-xl border border-line bg-white p-3.5 text-left transition-colors hover:border-navy-200 hover:bg-navy-50/40'>
+                    <span className='text-[12px] leading-5 text-ink-soft'>
+                        {question}
+                    </span>
+                    <ArrowUpRight
+                        aria-hidden='true'
+                        className='mt-0.5 h-4 w-4 shrink-0 text-faint transition-colors group-hover:text-navy-700'
+                    />
+                </button>
+            ))}
+        </div>
     </div>
 );
 
@@ -65,14 +150,30 @@ export const ChatInterface = () => {
 
     const [input, setInput] = useState('');
     const [liveStatus, setLiveStatus] = useState('');
+    const [health, setHealth] = useState(null);
     const controllerRef = useRef(null);
     const transcriptRef = useRef(null);
+    const textareaRef = useRef(null);
     const stickToBottomRef = useRef(true);
 
     const activeSession =
         sessions.find((session) => session.id === activeSessionId) ||
         sessions[0];
     const messages = activeSession?.messages || EMPTY_MESSAGES;
+    const sources = activeSession?.currentSources || [];
+    const validSourceCount = sources.filter(
+        (source) => source?.text && !source.text.includes('CONTEXT_MISSING')
+    ).length;
+
+    useEffect(() => {
+        const controller = new AbortController();
+
+        fetchHealth({ signal: controller.signal })
+            .then(setHealth)
+            .catch(() => setHealth(null));
+
+        return () => controller.abort();
+    }, []);
 
     useEffect(() => {
         const transcript = transcriptRef.current;
@@ -80,6 +181,13 @@ export const ChatInterface = () => {
             transcript.scrollTop = transcript.scrollHeight;
         }
     }, [messages, currentDraft]);
+
+    useEffect(() => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        textarea.style.height = 'auto';
+        textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+    }, [input]);
 
     const handleScroll = () => {
         const transcript = transcriptRef.current;
@@ -95,10 +203,8 @@ export const ChatInterface = () => {
         controllerRef.current?.abort();
     };
 
-    const handleSend = async (event) => {
-        event.preventDefault();
-        const userQuery = input.trim();
-
+    const sendQuery = async (rawQuery) => {
+        const userQuery = rawQuery.trim();
         if (!userQuery || isGenerating) return;
 
         const sessionId = activeSessionId;
@@ -127,10 +233,7 @@ export const ChatInterface = () => {
         let watchdog = null;
         const armWatchdog = () => {
             clearTimeout(watchdog);
-            watchdog = setTimeout(
-                () => controller.abort('timeout'),
-                180_000
-            );
+            watchdog = setTimeout(() => controller.abort('timeout'), 180_000);
         };
         armWatchdog();
 
@@ -238,9 +341,10 @@ export const ChatInterface = () => {
 
             updateMessage(sessionId, assistantId, {
                 failed: true,
-                error: aborted && !timedOut ?
-                    'Generation stopped.' :
-                    timedOut ?
+                error:
+                    aborted && !timedOut ?
+                        'Generation stopped.'
+                    :   timedOut ?
                         'The request timed out. Please retry.'
                     :   `Connection failed: ${error.message}`,
             });
@@ -253,74 +357,81 @@ export const ChatInterface = () => {
         }
     };
 
+    const handleSubmit = (event) => {
+        event.preventDefault();
+        sendQuery(input);
+    };
+
     return (
-        <main className='flex h-dvh overflow-hidden bg-space-indigo-900'>
-            <LeftPanel />
+        <main className='flex h-dvh overflow-hidden bg-canvas text-ink'>
+            <Sidebar health={health} />
 
             <section className='flex h-full min-w-0 flex-1 flex-col'>
-                <header className='flex shrink-0 items-center justify-between border-b border-[#162236] bg-space-indigo-950 px-4 py-3 md:px-6 md:py-4'>
-                    <section className='flex items-center space-x-3'>
-                        <button
-                            type='button'
+                <header className='flex h-16 shrink-0 items-center gap-3 border-b border-line bg-white/90 px-4 backdrop-blur md:px-6'>
+                    <div className='flex min-w-0 items-center gap-3'>
+                        <Button
+                            variant='ghost'
+                            size='icon'
                             onClick={toggleLeftPanel}
-                            aria-label={
-                                leftPanelOpen ?
-                                    'Hide history panel'
-                                :   'Show history panel'
-                            }
-                            aria-expanded={leftPanelOpen}
-                            className='cursor-pointer text-platinum-100 transition-colors hover:text-platinum-200'>
-                            {leftPanelOpen ?
-                                <PanelLeftClose
-                                    aria-hidden='true'
-                                    className='h-4 w-4 text-punch-red-500'
-                                />
-                            :   <PanelLeftOpen
+                            aria-label='Show consultations'
+                            className='md:hidden'>
+                            <Menu aria-hidden='true' className='h-5 w-5' />
+                        </Button>
+
+                        {!leftPanelOpen && (
+                            <Button
+                                variant='ghost'
+                                size='icon'
+                                onClick={toggleLeftPanel}
+                                aria-label='Show consultations'
+                                className='max-md:hidden'>
+                                <PanelLeft
                                     aria-hidden='true'
                                     className='h-4 w-4'
                                 />
-                            }
-                        </button>
-                        <Activity
-                            aria-hidden='true'
-                            className='h-5 w-5 text-punch-red-500'
-                        />
-                        <h1 className='text-sm font-bold tracking-wider text-platinum-100'>
-                            Medical Sovereign RAG
-                        </h1>
-                    </section>
+                            </Button>
+                        )}
 
-                    <section className='flex items-center space-x-3'>
-                        <button
-                            type='button'
+                        <div className='min-w-0 md:hidden'>
+                            <Wordmark compact />
+                        </div>
+
+                        <div className='hidden min-w-0 md:block'>
+                            <h1 className='truncate text-[14px] font-medium text-ink'>
+                                {activeSession?.title || 'New consultation'}
+                            </h1>
+                            <p className='mt-0.5 text-[11px] text-muted'>
+                                Ask a clinical question. The answer cites its
+                                sources.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className='ml-auto flex items-center gap-1.5'>
+                        <Button
+                            variant='outline'
+                            size='sm'
+                            onClick={toggleSidePanel}
+                            aria-pressed={sidePanelOpen}
+                            aria-label='Evidence'
+                            className='gap-2'>
+                            <span className='hidden sm:inline'>Evidence</span>
+                            <FileText
+                                aria-hidden='true'
+                                className='h-3.5 w-3.5 sm:hidden'
+                            />
+                            <Badge variant='navy'>{validSourceCount}</Badge>
+                        </Button>
+                        <Button
+                            variant='ghost'
+                            size='icon'
                             onClick={() => clearChat(activeSessionId)}
                             disabled={isGenerating}
-                            aria-label='Clear session messages'
-                            className='cursor-pointer text-platinum-100 transition-colors hover:text-punch-red-500 disabled:cursor-not-allowed disabled:opacity-30'>
+                            aria-label='Clear conversation'
+                            title='Clear conversation'>
                             <Trash2 aria-hidden='true' className='h-4 w-4' />
-                        </button>
-                        <button
-                            type='button'
-                            onClick={toggleSidePanel}
-                            aria-label={
-                                sidePanelOpen ?
-                                    'Hide reasoning panel'
-                                :   'Show reasoning panel'
-                            }
-                            aria-expanded={sidePanelOpen}
-                            className='cursor-pointer text-platinum-100 transition-colors hover:text-platinum-200'>
-                            {sidePanelOpen ?
-                                <PanelRightClose
-                                    aria-hidden='true'
-                                    className='h-4 w-4 text-punch-red-400'
-                                />
-                            :   <PanelRightOpen
-                                    aria-hidden='true'
-                                    className='h-4 w-4'
-                                />
-                            }
-                        </button>
-                    </section>
+                        </Button>
+                    </div>
                 </header>
 
                 <p className='sr-only' aria-live='polite'>
@@ -331,141 +442,177 @@ export const ChatInterface = () => {
                     ref={transcriptRef}
                     onScroll={handleScroll}
                     role='log'
-                    aria-label='Conversation transcript'
-                    className='flex-1 space-y-4 overflow-y-auto bg-space-indigo-900 p-4 md:px-12'>
-                    {messages.length === 0 && (
-                        <div className='mx-auto mt-10 max-w-xl rounded border border-[#162236] bg-space-indigo-950/60 p-5 text-center'>
-                            <p className='text-sm font-semibold text-platinum-100'>
-                                Ask a clinical question
-                            </p>
-                            <p className='mt-2 text-xs leading-relaxed text-platinum-300 md:text-sm'>
-                                Answers are grounded in the retrieved corpus.
-                                Try “What are the symptoms and treatments
-                                for acute bronchitis?”
-                            </p>
-                        </div>
-                    )}
+                    aria-label='Conversation'
+                    className='flex-1 overflow-y-auto'>
+                    <div className='mx-auto flex w-full max-w-3xl flex-col gap-7 px-4 py-8 md:px-8'>
+                        {messages.length === 0 ?
+                            <EmptyState onAsk={sendQuery} />
+                        :   null}
 
-                    {messages.map((message, index) => {
-                        const isUser = message.role === 'user';
-                        const isLast = index === messages.length - 1;
-                        const showDraft =
-                            !isUser &&
-                            isLast &&
-                            isGenerating &&
-                            Boolean(currentDraft);
+                        {messages.map((message, index) => {
+                            const isUser = message.role === 'user';
+                            const isLast = index === messages.length - 1;
+                            const showDraft =
+                                !isUser &&
+                                isLast &&
+                                isGenerating &&
+                                Boolean(currentDraft);
 
-                        return (
-                            <article
-                                key={message.id}
-                                className={`flex flex-col ${
-                                    isUser ? 'items-end' : 'items-start'
-                                }`}>
-                                <div
-                                    className={`max-w-xl rounded-md px-4 py-3 text-xs text-platinum-100 md:max-w-2xl md:text-sm ${
-                                        isUser ?
-                                            'bg-space-indigo-950'
-                                        :   'bg-space-indigo-800'
-                                    }`}>
-                                    {!isUser && message.failed ?
-                                        <FailureNotice
-                                            error={message.error}
-                                            attempts={message.attempts}
+                            if (isUser) {
+                                return (
+                                    <article
+                                        key={message.id}
+                                        className='flex justify-end'>
+                                        <div className='max-w-[85%] rounded-2xl rounded-br-md bg-navy-800 px-4 py-2.5 text-white shadow-sm'>
+                                            <p className='whitespace-pre-wrap text-[13px] leading-6'>
+                                                {message.content}
+                                            </p>
+                                            <time className='mt-1 block text-right text-[10px] text-white/55'>
+                                                {message.timestamp}
+                                            </time>
+                                        </div>
+                                    </article>
+                                );
+                            }
+
+                            return (
+                                <article
+                                    key={message.id}
+                                    className='group flex gap-3'>
+                                    <span className='mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-navy-700'>
+                                        <Stethoscope
+                                            aria-hidden='true'
+                                            className='h-4 w-4'
                                         />
-                                    :   isUser ?
-                                        <p className='whitespace-pre-wrap leading-relaxed'>
-                                            {message.content}
-                                        </p>
-                                    :   <>
-                                            {showDraft ?
-                                                <div className='text-platinum-200'>
-                                                    <Markdown
-                                                        content={currentDraft}
-                                                    />
-                                                    <span
-                                                        aria-hidden='true'
-                                                        className='ml-1 inline-block h-3 w-1.5 animate-pulse bg-punch-red-500 align-middle motion-reduce:animate-none'
-                                                    />
-                                                </div>
-                                            :   message.content ?
+                                    </span>
+
+                                    <div className='min-w-0 flex-1'>
+                                        <div className='mb-1.5 flex items-center gap-2'>
+                                            <span className='text-[12px] font-medium text-ink'>
+                                                MedSovereign
+                                            </span>
+                                            <span className='text-[10px] text-faint'>
+                                                {message.timestamp}
+                                            </span>
+                                            {message.content && (
+                                                <CopyButton
+                                                    text={message.content}
+                                                />
+                                            )}
+                                        </div>
+
+                                        {message.failed ?
+                                            <FailureNotice
+                                                error={message.error}
+                                                attempts={message.attempts}
+                                            />
+                                        :   showDraft ?
+                                            <div className='text-[13px] text-ink-soft'>
+                                                <Markdown
+                                                    content={currentDraft}
+                                                />
+                                                <span
+                                                    aria-hidden='true'
+                                                    className='ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-navy-600 align-text-bottom motion-reduce:animate-none'
+                                                />
+                                            </div>
+                                        :   message.content ?
+                                            <div className='text-[13px] text-ink-soft'>
                                                 <Markdown
                                                     content={message.content}
                                                 />
-                                            :   isGenerating ?
-                                                <p className='text-platinum-300 italic'>
-                                                    Retrieving evidence…
-                                                </p>
-                                            :   null
-                                            }
-                                        </>
-                                    }
-
-                                    <time className='mt-1.5 block text-right font-mono text-[10px] text-platinum-400'>
-                                        {message.timestamp}
-                                    </time>
-                                </div>
-                            </article>
-                        );
-                    })}
+                                            </div>
+                                        :   isGenerating ?
+                                            <div className='flex items-center gap-2 text-[12.5px] text-muted'>
+                                                <Spinner className='h-3.5 w-3.5 text-navy-600' />
+                                                Searching the literature…
+                                            </div>
+                                        :   null}
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
                 </div>
 
-                <footer className='shrink-0 bg-space-indigo-950 p-3 md:p-4'>
-                    <form
-                        onSubmit={handleSend}
-                        className='relative mx-auto flex max-w-4xl items-end rounded-md bg-space-indigo-900'>
-                        <textarea
-                            value={input}
-                            onChange={(event) => setInput(event.target.value)}
-                            onKeyDown={(event) => {
-                                if (
-                                    event.key === 'Enter' &&
-                                    !event.shiftKey &&
-                                    !event.nativeEvent.isComposing
-                                ) {
-                                    event.preventDefault();
-                                    handleSend(event);
+                <footer className='shrink-0 border-t border-line bg-white px-3 py-3 md:px-8 md:py-4'>
+                    <div className='mx-auto max-w-3xl'>
+                        <form
+                            onSubmit={handleSubmit}
+                            className='rounded-xl border border-line bg-white p-2 shadow-[0_1px_2px_rgba(11,37,69,0.04)] transition-shadow focus-within:border-navy-200 focus-within:ring-2 focus-within:ring-navy-100/70'>
+                            <textarea
+                                ref={textareaRef}
+                                value={input}
+                                onChange={(event) =>
+                                    setInput(event.target.value)
                                 }
-                            }}
-                            rows={2}
-                            maxLength={2000}
-                            placeholder='Enter clinical query…'
-                            aria-label='Clinical query'
-                            className='w-full resize-none bg-transparent py-3 pr-28 pl-4 text-xs text-platinum-100 placeholder:text-platinum-400 focus:outline-none md:text-sm'
-                        />
+                                onKeyDown={(event) => {
+                                    if (
+                                        event.key === 'Enter' &&
+                                        !event.shiftKey &&
+                                        !event.nativeEvent.isComposing
+                                    ) {
+                                        event.preventDefault();
+                                        sendQuery(input);
+                                    }
+                                }}
+                                rows={1}
+                                maxLength={2000}
+                                placeholder='Ask a clinical question…'
+                                aria-label='Clinical question'
+                                className='block max-h-40 min-h-[52px] w-full resize-none bg-transparent px-2 py-2 text-[13px] leading-6 text-ink placeholder:text-faint focus:outline-none'
+                            />
 
-                        {isGenerating ?
-                            <button
-                                type='button'
-                                onClick={handleStop}
-                                aria-label='Stop generation'
-                                className='absolute right-2 bottom-2 flex cursor-pointer items-center space-x-1 rounded bg-punch-red-700 px-3 py-2 text-platinum-100 transition-colors hover:bg-punch-red-600'>
-                                <Square
-                                    aria-hidden='true'
-                                    className='size-3 fill-current'
-                                />
-                                <span className='text-xs font-bold'>Stop</span>
-                            </button>
-                        :   <button
-                                type='submit'
-                                disabled={!input.trim()}
-                                className='absolute right-2 bottom-2 flex cursor-pointer items-center space-x-1 rounded bg-blue-950 px-3 py-2 text-platinum-100 transition-colors hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-30'>
-                                <span className='text-xs font-bold'>Send</span>
-                                <Send
-                                    aria-hidden='true'
-                                    className='size-3'
-                                />
-                            </button>
-                        }
-                    </form>
+                            <div className='flex items-center justify-between gap-3 px-1 pb-0.5'>
+                                <div className='flex items-center gap-2 text-[10.5px] text-faint'>
+                                    <span className='hidden sm:inline'>
+                                        Enter to send · Shift+Enter for a new
+                                        line
+                                    </span>
+                                    {input.length > 1700 && (
+                                        <span className='tabular-nums'>
+                                            {input.length}/2000
+                                        </span>
+                                    )}
+                                </div>
 
-                    <p className='mx-auto mt-2 max-w-4xl text-center text-[10px] text-platinum-400'>
-                        Retrieval-grounded. Not a medical device and not
-                        validated for clinical use.
-                    </p>
+                                {isGenerating ?
+                                    <Button
+                                        variant='danger'
+                                        size='sm'
+                                        onClick={handleStop}
+                                        aria-label='Stop generation'
+                                        className='gap-1.5'>
+                                        <Square
+                                            aria-hidden='true'
+                                            className='h-3 w-3 fill-current'
+                                        />
+                                        Stop
+                                    </Button>
+                                :   <Button
+                                        type='submit'
+                                        size='sm'
+                                        disabled={!input.trim()}
+                                        className='gap-1.5'>
+                                        <Send
+                                            aria-hidden='true'
+                                            className='h-3.5 w-3.5'
+                                        />
+                                        Send
+                                    </Button>
+                                }
+                            </div>
+                        </form>
+
+                        <p className='mt-2 text-center text-[10px] text-faint'>
+                            Not a medical device. For research and demonstration
+                            only.
+                        </p>
+                    </div>
                 </footer>
             </section>
 
-            <SidePanel />
+            <EvidencePanel />
         </main>
     );
 };

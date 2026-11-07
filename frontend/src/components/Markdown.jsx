@@ -3,36 +3,38 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 const components = {
-    p: ({ children }) => <p className='mb-2 leading-relaxed last:mb-0'>{children}</p>,
+    p: ({ children }) => (
+        <p className='mb-3 leading-7 last:mb-0'>{children}</p>
+    ),
     ul: ({ children }) => (
-        <ul className='mb-2 list-disc space-y-1 pl-5'>{children}</ul>
+        <ul className='mb-3 list-disc space-y-1.5 pl-5'>{children}</ul>
     ),
     ol: ({ children }) => (
-        <ol className='mb-2 list-decimal space-y-1 pl-5'>{children}</ol>
+        <ol className='mb-3 list-decimal space-y-1.5 pl-5'>{children}</ol>
     ),
-    li: ({ children }) => <li className='leading-relaxed'>{children}</li>,
+    li: ({ children }) => <li className='leading-7'>{children}</li>,
     h1: ({ children }) => (
-        <h1 className='mt-3 mb-2 text-base font-bold text-platinum-50'>
+        <h1 className='mt-4 mb-2 text-[17px] font-semibold text-ink first:mt-0'>
             {children}
         </h1>
     ),
     h2: ({ children }) => (
-        <h2 className='mt-3 mb-2 text-sm font-bold text-platinum-50'>
+        <h2 className='mt-4 mb-2 text-[15px] font-semibold text-ink first:mt-0'>
             {children}
         </h2>
     ),
     h3: ({ children }) => (
-        <h3 className='mt-2 mb-1 text-sm font-semibold text-platinum-50'>
+        <h3 className='mt-3 mb-1.5 text-[14px] font-semibold text-ink first:mt-0'>
             {children}
         </h3>
     ),
     h4: ({ children }) => (
-        <h4 className='mt-2 mb-1 text-xs font-semibold uppercase tracking-wide text-platinum-200'>
+        <h4 className='mt-3 mb-1.5 text-[13px] font-semibold text-ink first:mt-0'>
             {children}
         </h4>
     ),
     strong: ({ children }) => (
-        <strong className='font-semibold text-platinum-50'>{children}</strong>
+        <strong className='font-semibold text-ink'>{children}</strong>
     ),
     em: ({ children }) => <em className='italic'>{children}</em>,
     a: ({ href, children }) => (
@@ -40,41 +42,41 @@ const components = {
             href={href}
             target='_blank'
             rel='noreferrer noopener'
-            className='text-punch-red-300 underline decoration-punch-red-500/60 underline-offset-2 hover:text-punch-red-200'>
+            className='font-medium text-navy-600 underline decoration-navy-200 underline-offset-4 hover:text-navy-800'>
             {children}
         </a>
     ),
     code: ({ className, children }) =>
         className?.startsWith('language-') ?
             <code className='font-mono text-[0.85em]'>{children}</code>
-        :   <code className='rounded bg-space-indigo-950 px-1 py-0.5 font-mono text-[0.85em] text-platinum-200'>
+        :   <code className='rounded-md bg-surface px-1.5 py-0.5 font-mono text-[0.85em] text-navy-800 ring-1 ring-line'>
                 {children}
             </code>,
     pre: ({ children }) => (
-        <pre className='mb-2 overflow-x-auto rounded border border-[#162236] bg-space-indigo-950 p-3'>
+        <pre className='mb-3 overflow-x-auto rounded-lg bg-navy-800 p-3 text-[12px] leading-6 text-navy-50'>
             {children}
         </pre>
     ),
     blockquote: ({ children }) => (
-        <blockquote className='mb-2 border-l-2 border-punch-red-500/60 pl-3 text-platinum-200 italic'>
+        <blockquote className='mb-3 border-l-2 border-navy-200 pl-3 text-muted italic'>
             {children}
         </blockquote>
     ),
-    hr: () => <hr className='my-3 border-[#162236]' />,
+    hr: () => <hr className='my-4 border-line' />,
     table: ({ children }) => (
-        <div className='mb-2 overflow-x-auto'>
-            <table className='w-full border-collapse text-left text-[0.85em]'>
+        <div className='mb-3 overflow-x-auto'>
+            <table className='w-full border-collapse text-left text-[12.5px]'>
                 {children}
             </table>
         </div>
     ),
     th: ({ children }) => (
-        <th className='border border-[#1e2c47] px-2 py-1 font-semibold text-platinum-100'>
+        <th className='border-b border-line px-2 py-1.5 font-medium text-ink'>
             {children}
         </th>
     ),
     td: ({ children }) => (
-        <td className='border border-[#1e2c47] px-2 py-1 align-top'>
+        <td className='border-b border-line/70 px-2 py-1.5 align-top'>
             {children}
         </td>
     ),
