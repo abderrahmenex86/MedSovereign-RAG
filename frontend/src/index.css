@@ -1,14 +1,6 @@
 @import 'tailwindcss';
 
 @font-face {
-    font-family: 'Cubao Free Wide';
-    src: url('/fonts/cubao-free-wide.woff2') format('woff2');
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-}
-
-@font-face {
     font-family: 'Cubao Free Narrow';
     src: url('/fonts/cubao-free-narrow.woff2') format('woff2');
     font-style: normal;
@@ -18,7 +10,6 @@
 
 @theme {
     --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
-    --font-display: 'Cubao Free Wide', 'Poppins', sans-serif;
     --font-brand: 'Cubao Free Narrow', 'Poppins', sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 

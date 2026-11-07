@@ -103,7 +103,7 @@ const EmptyState = ({ onAsk }) => (
             <span className='mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-navy-800 text-white shadow-sm'>
                 <Stethoscope aria-hidden='true' className='h-6 w-6' />
             </span>
-            <h2 className='mt-5 font-display text-[30px] leading-none text-navy-800'>
+            <h2 className='mt-5 text-[26px] font-semibold leading-[1.2] tracking-[-0.02em] text-navy-800 md:text-[28px]'>
                 Ask the evidence.
             </h2>
             <p className='mx-auto mt-3 max-w-md text-[13px] leading-6 text-muted'>
