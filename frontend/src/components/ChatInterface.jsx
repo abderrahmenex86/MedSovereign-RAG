@@ -551,9 +551,10 @@ export const ChatInterface = () => {
 
                     <div className='ml-auto flex items-center gap-1.5'>
                         <Button
-                            variant='ghost'
-                            size='icon'
+                            variant='outline'
+                            size='sm'
                             onClick={handleThemeToggle}
+                            className='h-8 w-8 px-0'
                             aria-label={
                                 theme === 'dark' ?
                                     'Switch to light mode'
