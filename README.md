@@ -105,10 +105,12 @@ CPU host.
 ### GPU box (vast.ai)
 
 For the full-size generator, rent a 24 GB card (RTX 3090/4090, A5000, L4) with at
-least 50 GB of disk and 16 GB of host RAM. Zephyr-7B is ~14 GB of weights plus
-2–3 GB of KV cache and CUDA overhead; 16 GB cards are too tight for 1,024-token
-answers. A 3090 on vast.ai is typically around $0.20–0.35/hour, so a short demo
-costs well under $1.
+least 50 GB of disk and 16 GB of host RAM. A 3090 on vast.ai is typically around
+$0.20–0.35/hour, so a short demo costs well under $1.
+
+On a 24 GB card, the recommended generator is **`qwen3:14b`** through Ollama
+(~9 GB at Q4, leaving room for the embedder, reranker, and KV cache). Zephyr-7B
+via Transformers still works as a no-Ollama fallback.
 
 1. Rent an **on-demand** (not interruptible) PyTorch/CUDA 12.x image.
 2. From your machine:
@@ -117,13 +119,19 @@ costs well under $1.
    ./push.sh root@HOST -p PORT
    ```
 
-3. On the instance:
+3. On the instance, install Ollama and pull the model:
 
    ```bash
+   curl -fsSL https://ollama.com/install.sh | sh
+   nohup ollama serve > /tmp/ollama.log 2>&1 &
+   ollama pull qwen3:14b
+
    cd /workspace/MedSovereign-RAG
    python3 -m venv .venv && source .venv/bin/activate
    pip install -r requirements.txt
    python setup_dataset.py
+
+   cp deploy/vast.env.example .env
    python main.py
    ```
 
@@ -146,12 +154,12 @@ The index cache key hashes the corpus contents, so a cache built on the GPU box
 matches the same corpus on the laptop. Use the same `dataset/medquad_corpus.json`
 on both sides: copy the file over, or run `python setup_dataset.py --force` on
 both machines before building/fetching the cache. `push.sh` excludes `.env`; keep
-the HF token out of the repo. Public models do not need a token. Set
-`PERSIST_TRACES=false` on a rented or shared machine.
+the HF token out of the repo. Public models do not need a token.
 
-If the image does not already have a CUDA-enabled torch, install the wheel that
-matches its CUDA version before the requirements file, for example
-`pip install torch --index-url https://download.pytorch.org/whl/cu124`.
+To use Zephyr instead, remove `GENERATOR_BACKEND` from the instance `.env` (or set
+it to `transformers`). If the image does not already have a CUDA-enabled torch,
+install the wheel that matches its CUDA version before the requirements file, for
+example `pip install torch --index-url https://download.pytorch.org/whl/cu124`.
 `MODEL_DTYPE=auto` selects bfloat16 on Ampere/Ada and float16 on T4/V100.
 
 A 12–16 GB card also works with `GENERATOR_BACKEND=ollama` and a quantized
