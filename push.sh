@@ -29,6 +29,9 @@ ssh -p "$PORT" "$REMOTE" "mkdir -p $REMOTE_DIR"
 
 echo "[INFO] Pushing codebase to $REMOTE:$REMOTE_DIR..."
 rsync -avz -e "ssh -p $PORT" \
+   --include '.env.example' \
+   --exclude '.env' \
+   --exclude '.env.*' \
    --exclude 'artifacts/' \
    --exclude 'dataset/' \
    --exclude 'docs/figs/' \
