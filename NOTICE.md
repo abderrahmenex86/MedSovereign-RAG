@@ -10,6 +10,8 @@ and data downloaded at runtime carry their own licenses:
 | `HuggingFaceH4/zephyr-7b-beta` | Hugging Face | MIT |
 | MedGemma (`medgemma:4b`, optional Ollama generator) | Ollama / Google | Health AI Developer Foundations license ("other") |
 | `keivalya/MedQuad-MedicalQnADataset` | Hugging Face | No license declared (derived from NIH/NIDDK public pages) |
+| PubMed abstracts (optional `jsonl` corpus) | NLM E-utilities | NLM terms; abstract copyright remains with the publisher |
+| `qiaojin/PubMedQA` (retrieval evaluation) | Hugging Face | See the dataset card; use for evaluation only |
 
 The embedding model is **non-commercial**. Do not deploy this pipeline in a
 commercial product without replacing it with a permissively licensed embedder

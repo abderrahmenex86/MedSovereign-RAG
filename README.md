@@ -129,9 +129,12 @@ via Transformers still works as a no-Ollama fallback.
    cd /workspace/MedSovereign-RAG
    python3 -m venv .venv && source .venv/bin/activate
    pip install -r requirements.txt
-   python setup_dataset.py
 
    cp deploy/vast.env.example .env
+   python scripts/fetch_pubmed.py --limit 100000 --include-pubmedqa
+   python scripts/build_index.py
+   python scripts/evaluate_retrieval.py --limit 200
+
    python main.py
    ```
 
@@ -144,17 +147,18 @@ via Transformers still works as a no-Ollama fallback.
    cd frontend && npm run dev
    ```
 
-5. Fetch the GPU-built index so the laptop does not spend hours embedding:
+5. Fetch the GPU-built index and its corpus so the laptop does not spend hours
+   embedding:
 
    ```bash
    ./fetch.sh root@HOST -p PORT --all
+   scp -P PORT root@HOST:/workspace/MedSovereign-RAG/dataset/pubmed.jsonl dataset/
    ```
 
 The index cache key hashes the corpus contents, so a cache built on the GPU box
-matches the same corpus on the laptop. Use the same `dataset/medquad_corpus.json`
-on both sides: copy the file over, or run `python setup_dataset.py --force` on
-both machines before building/fetching the cache. `push.sh` excludes `.env`; keep
-the HF token out of the repo. Public models do not need a token.
+matches the same corpus on the laptop. Use the same corpus file on both sides
+(`dataset/pubmed.jsonl` for the literature corpus). `push.sh` excludes `.env`;
+keep the HF token out of the repo. Public models do not need a token.
 
 To use Zephyr instead, remove `GENERATOR_BACKEND` from the instance `.env` (or set
 it to `transformers`). If the image does not already have a CUDA-enabled torch,
@@ -165,6 +169,44 @@ example `pip install torch --index-url https://download.pytorch.org/whl/cu124`.
 A 12–16 GB card also works with `GENERATOR_BACKEND=ollama` and a quantized
 `qwen3:8b` (~5 GB) or `medgemma:4b` (3.3 GB), which is cheaper and faster but a
 weaker judge.
+
+## Corpus
+
+The default `setup_dataset.py` downloads MedQuad, which is useful for a quick
+demo but is a set of consumer Q&A pairs, not clinical evidence. For a real
+retrieval workload, use the PubMed JSONL corpus:
+
+```bash
+python scripts/fetch_pubmed.py --limit 100000 --include-pubmedqa
+
+CORPUS_FORMAT=jsonl CORPUS_PATH=dataset/pubmed.jsonl python scripts/build_index.py
+CORPUS_FORMAT=jsonl CORPUS_PATH=dataset/pubmed.jsonl python main.py
+```
+
+The default query targets guidelines, systematic reviews, meta-analyses, and
+randomized trials from 2015 onward. `--include-pubmedqa` adds the PMIDs needed by
+the retrieval evaluation. The fetcher writes `dataset/pubmed_pmids.txt`; continue
+an interrupted download with `--reuse-manifest --resume`. Corpus files are
+ignored by git and fetched at build time.
+
+Evaluate retrieval against PubMedQA's labeled PMIDs:
+
+```bash
+CORPUS_FORMAT=jsonl CORPUS_PATH=dataset/pubmed.jsonl \
+  python scripts/evaluate_retrieval.py --limit 200 --k 10
+```
+
+This writes recall@1/5/10 and MRR@10 to `artifacts/eval/pubmedqa.json`.
+`missing_targets` reports questions whose labeled PMID is not in the corpus, so
+fetch with `--include-pubmedqa` before trusting the numbers.
+
+100k abstracts produce roughly 110k–130k chunks. Build that on the GPU box
+(roughly 10–20 minutes) and copy `artifacts/index_cache/` back. On CPU, index a
+few thousand documents instead, for example `MAX_CORPUS_DOCS=2000`.
+
+The repository does not redistribute the corpus. PubMed abstracts remain under
+NLM and publisher terms. PMC full text, DailyMed, and MedlinePlus adapters are the
+next sources.
 
 ## Configuration
 
@@ -183,6 +225,8 @@ Every setting has an environment variable; see `.env.example` for the full list.
 | `OLLAMA_THINK` | unset | Set `false` for thinking models such as Qwen3 |
 | `OLLAMA_REQUEST_TIMEOUT` | `600` | Read timeout in seconds |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `300` / `50` | Word-level chunking |
+| `CORPUS_PATH` | `dataset/medquad_corpus.json` | Corpus file |
+| `CORPUS_FORMAT` | `medquad` | `medquad` or `jsonl` |
 | `MAX_CORPUS_DOCS` | `0` | Index only the first N documents (`0` = all) |
 | `MAX_CONCURRENT_REQUESTS` | `1` | Serialize jobs on one GPU |
 | `PERSIST_TRACES` | `true` | Write traces to `TRACE_DIR` |
@@ -257,8 +301,10 @@ npm run build
 
 ## Limits
 
-- Answers are grounded in MedQuad, which is a corpus of question-answer pairs
-  rather than real clinical notes, so free-text records are untested.
+- By default, answers are grounded in MedQuad, which is a corpus of
+  question-answer pairs rather than real clinical notes. The PubMed JSONL corpus
+  (`CORPUS_FORMAT=jsonl`) is the recommended alternative for evidence-grade
+  retrieval. Free-text clinical notes are still untested.
 - The judge is another language model. A confidently wrong draft that matches the
   retrieved text can still pass. No benchmark or human evaluation is committed
   yet, so the self-correction loop's benefit over a single pass is unmeasured.
