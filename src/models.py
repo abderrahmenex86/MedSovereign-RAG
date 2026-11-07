@@ -181,7 +181,9 @@ class ClinicalGenerator:
             decoded = decoded[0] if decoded else ""
         return decoded.strip()
 
-    def generate_stream(self, system_prompt, user_prompt, max_tokens=256, timeout=120.0):
+    def generate_stream(
+        self, system_prompt, user_prompt, max_tokens=256, timeout=120.0, cancel_event=None
+    ):
         inputs = self._build_inputs(system_prompt, user_prompt)
         streamer = TextIteratorStreamer(
             self.tokenizer,
@@ -213,7 +215,10 @@ class ClinicalGenerator:
         worker.start()
 
         try:
-            yield from streamer
+            for new_text in streamer:
+                if cancel_event is not None and cancel_event.is_set():
+                    break
+                yield new_text
         finally:
             stop_event.set()
             worker.join(timeout=10.0)
@@ -314,7 +319,7 @@ class OllamaGenerator:
 
         return (body.get("message", {}).get("content") or "").strip()
 
-    def generate_stream(self, system_prompt, user_prompt, max_tokens=256):
+    def generate_stream(self, system_prompt, user_prompt, max_tokens=256, cancel_event=None):
         payload = self._payload(system_prompt, user_prompt, max_tokens, stream=True)
 
         with self._client.stream("POST", "/api/chat", json=payload) as response:
@@ -323,6 +328,8 @@ class OllamaGenerator:
                 raise RuntimeError(self._error_message(response))
 
             for line in response.iter_lines():
+                if cancel_event is not None and cancel_event.is_set():
+                    return
                 if not line.strip():
                     continue
 

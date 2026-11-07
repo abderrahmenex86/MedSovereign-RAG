@@ -50,7 +50,7 @@ class FakeGenerator:
         self.rewrite_calls += 1
         return "better query"
 
-    def generate_stream(self, system_prompt, user_prompt, max_tokens=256):
+    def generate_stream(self, system_prompt, user_prompt, max_tokens=256, cancel_event=None):
         if self.fail_after == 0:
             raise RuntimeError("CUDA out of memory")
 
@@ -124,7 +124,9 @@ def test_successful_run_ends_with_done_success():
 
 def test_empty_answer_is_rejected_without_calling_the_judge():
     class EmptyGenerator(FakeGenerator):
-        def generate_stream(self, system_prompt, user_prompt, max_tokens=256):
+        def generate_stream(
+            self, system_prompt, user_prompt, max_tokens=256, cancel_event=None
+        ):
             return
             yield  # pragma: no cover
 

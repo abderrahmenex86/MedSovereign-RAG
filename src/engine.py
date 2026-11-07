@@ -203,7 +203,9 @@ def execute_agentic_rag(
             user_prompt = f"CONTEXT:\n{context_string}\n\nQUERY:\n{original_query}"
             generated_parts = []
             cancelled = False
-            for token in generator.generate_stream(SYSTEM_QA, user_prompt, max_tokens=1024):
+            for token in generator.generate_stream(
+                SYSTEM_QA, user_prompt, max_tokens=1024, cancel_event=cancel_event
+            ):
                 if cancel_event is not None and cancel_event.is_set():
                     cancelled = True
                     break

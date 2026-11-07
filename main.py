@@ -1,5 +1,6 @@
 import asyncio
 import gc
+import json
 import os
 import threading
 import time
@@ -148,7 +149,15 @@ async def health(request: Request):
     return {"status": "ok", **state.info}
 
 
-async def _stream_events(body, cancel_event, semaphore):
+async def _watch_disconnect(request, cancel_event):
+    while not cancel_event.is_set():
+        if await request.is_disconnected():
+            cancel_event.set()
+            return
+        await asyncio.sleep(0.5)
+
+
+async def _stream_events(body, cancel_event, semaphore, request=None):
     """Bridge the blocking pipeline to the event loop and enforce one job at a time."""
     loop = asyncio.get_running_loop()
     queue: asyncio.Queue[object] = asyncio.Queue()
@@ -163,29 +172,48 @@ async def _stream_events(body, cancel_event, semaphore):
         finally:
             loop.call_soon_threadsafe(queue.put_nowait, sentinel)
 
-    await semaphore.acquire()
-    worker = threading.Thread(target=produce, daemon=True)
-    worker.start()
-    completed = False
+    watcher = (
+        asyncio.create_task(_watch_disconnect(request, cancel_event))
+        if request is not None
+        else None
+    )
 
     try:
-        while True:
-            item = await queue.get()
+        if semaphore.locked():
+            yield json.dumps(
+                {
+                    "event": "status",
+                    "step": "queued",
+                    "message": "Waiting for the current consultation to finish...",
+                }
+            ) + "\n"
 
-            if item is sentinel:
-                completed = True
-                break
-            if isinstance(item, BaseException):
-                raise item
+        await semaphore.acquire()
+        worker = threading.Thread(target=produce, daemon=True)
+        worker.start()
+        completed = False
 
-            yield item
+        try:
+            while True:
+                item = await queue.get()
+
+                if item is sentinel:
+                    completed = True
+                    break
+                if isinstance(item, BaseException):
+                    raise item
+
+                yield item
+        finally:
+            if not completed:
+                cancel_event.set()
+            await asyncio.to_thread(worker.join, 30.0)
+            if worker.is_alive():
+                log_message("api", "Warning: pipeline worker did not stop within 30s.")
+            semaphore.release()
     finally:
-        if not completed:
-            cancel_event.set()
-        await asyncio.to_thread(worker.join, 30.0)
-        if worker.is_alive():
-            log_message("api", "Warning: pipeline worker did not stop within 30s.")
-        semaphore.release()
+        if watcher is not None:
+            watcher.cancel()
 
 
 @app.post("/api/ask")
@@ -220,7 +248,7 @@ async def ask_agent(payload: QueryPayload, request: Request):
     )
 
     return StreamingResponse(
-        _stream_events(body, cancel_event, state.semaphore),
+        _stream_events(body, cancel_event, state.semaphore, request),
         media_type="application/x-ndjson",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
