@@ -1,0 +1,12 @@
+%%{init: {'theme': 'default'}}%%
+flowchart TD
+  UI["React + Vite UI"] -->|"POST /api/ask"| API["FastAPI NDJSON API"]
+  API --> Search["Hybrid search: PubMedBERT + BM25"]
+  Search --> Merge["Merge and dedupe by document"]
+  Merge --> Rerank["Cross-encoder rerank"]
+  Rerank --> Gen["Draft from top passages"]
+  Gen --> Judge{"Supported and answers?"}
+  Judge -->|"PASS"| Answer["Stream answer and sources"]
+  Judge -->|"FAIL"| Rewrite["Rewrite query"]
+  Rewrite --> Search
+  Judge -->|"3 failures"| Refuse["REFUSED"]

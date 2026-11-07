@@ -309,34 +309,9 @@ The index cache key hashes the corpus contents, so a cache built on the GPU box 
 
 The request path is the same for the Transformers and Ollama backends.
 
-```mermaid
-%%{init: {'theme': 'default'}}%%
-flowchart LR
-  subgraph Client
-    UI["React + Vite UI"]
-  end
-  subgraph API
-    HTTP["FastAPI /api/ask"]
-    Loop["Agentic loop"]
-  end
-  subgraph Retrieval
-    Embed["PubMedBERT embedder"]
-    Dense["FAISS dense index"]
-    Sparse["BM25 sparse index"]
-    Merge["Merge and dedupe by document"]
-    Rerank["Cross-encoder reranker"]
-  end
-  subgraph Generation
-    Gen["Generator: Transformers or Ollama"]
-    Judge["LLM judge"]
-  end
-  UI -->|"NDJSON events"| HTTP --> Loop
-  Loop --> Embed --> Dense --> Merge
-  Loop --> Sparse --> Merge
-  Merge --> Rerank --> Gen --> Judge
-  Judge -->|"PASS"| UI
-  Judge -->|"FAIL"| Rewrite["Rewrite query"] --> Loop
-```
+![MedSovereign-RAG request path from the React client through FastAPI, hybrid search, merge and dedupe, cross-encoder reranking, drafting, and the judge retry or refusal path](docs/figs/pipeline.png)
+
+_The diagram is pre-rendered with a white background so it stays readable in GitHub's light and dark themes. Source: `docs/figs/pipeline.mmd`._
 
 Ingestion. `src/corpus.py` reads JSONL, and `src/data.py` handles MedQuad. Each JSONL section is chunked separately with a 300-word window and 50-word overlap. Each chunk gets an ID such as `PMID:32092323#methods-0`. The text used for retrieval prepends the title and section heading. For MedQuad, the title is the source question, so the question is indexed with the answer.
 
@@ -371,7 +346,7 @@ Streaming. `main.py` runs the blocking pipeline in a worker thread and bridges i
 | `tests/` | Backend tests for config, corpus, retrieval, engine, streaming, Ollama, and PubMed |
 | `frontend/` | React 19 and Vite 8 interface |
 | `deploy/vast.env.example` | GPU box environment template |
-| `docs/figs/` | Interface screenshot and demo video |
+| `docs/figs/` | Interface screenshot, demo video, and pipeline diagram |
 | `dataset/` | MedQuad or Europe PMC corpus. Ignored by git |
 | `artifacts/` | Index cache, traces, evaluation output, and the local demo pack. Ignored by git |
 | `setup_dataset.py` | MedQuad download and deduplication |
