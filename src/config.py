@@ -85,6 +85,7 @@ class Config:
     reranker_model: str
     generator_model: str
     corpus_path: Path
+    corpus_format: str
     cache_dir: Path
     trace_dir: Path
     chunk_size: int
@@ -124,11 +125,18 @@ class Config:
                 f"GENERATOR_BACKEND must be 'transformers' or 'ollama', got {generator_backend!r}"
             )
 
+        corpus_format = _env_str("CORPUS_FORMAT", "medquad").lower()
+        if corpus_format not in {"medquad", "jsonl"}:
+            raise ValueError(
+                f"CORPUS_FORMAT must be 'medquad' or 'jsonl', got {corpus_format!r}"
+            )
+
         return cls(
             embedder_model=_env_str("EMBEDDER_MODEL", DEFAULT_EMBEDDER),
             reranker_model=_env_str("RERANKER_MODEL", DEFAULT_RERANKER),
             generator_model=_env_str("GENERATOR_MODEL", DEFAULT_GENERATOR),
             corpus_path=Path(_env_str("CORPUS_PATH", "dataset/medquad_corpus.json")),
+            corpus_format=corpus_format,
             cache_dir=Path(_env_str("INDEX_CACHE_DIR", "artifacts/index_cache")),
             trace_dir=Path(_env_str("TRACE_DIR", "artifacts/production_api")),
             chunk_size=chunk_size,

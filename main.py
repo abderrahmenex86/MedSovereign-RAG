@@ -13,14 +13,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.config import Config
-from src.data import (
-    HybridIndex,
-    build_index_text,
-    index_cache_key,
-    limit_corpus,
-    parse_corpus,
-)
 from src.engine import execute_agentic_rag
+from src.index import load_or_build_index
 from src.models import ClinicalEmbedder, ClinicalGenerator, ClinicalReranker, OllamaGenerator
 from src.utils import configure_logging, log_message, set_determinism
 
@@ -39,52 +33,6 @@ class QueryPayload(BaseModel):
     )
     top_k_retrieve: int = Field(default=15, ge=1, le=50)
     top_k_generate: int = Field(default=3, ge=1, le=10)
-
-
-def _load_hybrid_index(config, embedder):
-    if not config.corpus_path.exists():
-        raise FileNotFoundError(
-            f"Corpus missing at {config.corpus_path}. Run `python setup_dataset.py` first."
-        )
-
-    chunked_corpus = parse_corpus(config.corpus_path, config.chunk_size, config.chunk_overlap)
-    chunked_corpus = limit_corpus(chunked_corpus, config.max_corpus_docs)
-
-    if not chunked_corpus:
-        raise ValueError(
-            "Sanity Check Failed: Corpus parsed to 0 chunks. Check the dataset path and structure."
-        )
-
-    cache_key = index_cache_key(
-        config.corpus_path,
-        config.chunk_size,
-        config.chunk_overlap,
-        config.embedder_model,
-        config.max_corpus_docs,
-    )
-    cache_dir = config.cache_dir / cache_key
-
-    if HybridIndex.cache_exists(cache_dir):
-        try:
-            log_message("api", f"Loading cached indices from {cache_dir}")
-            return HybridIndex.load(cache_dir, embedder.hidden_size), len(chunked_corpus)
-        except Exception as exc:  # noqa: BLE001 - a corrupt cache should trigger a rebuild
-            log_message("api", f"Index cache unusable ({exc}); rebuilding.")
-
-    log_message("api", "Embedding corpus and building dense + sparse indices...")
-    index_texts = [build_index_text(chunk) for chunk in chunked_corpus]
-    corpus_embeddings = embedder.encode(index_texts)
-
-    hybrid_index = HybridIndex(embedding_dimension=corpus_embeddings.shape[1])
-    hybrid_index.build_indexes(chunked_corpus, corpus_embeddings, index_texts=index_texts)
-
-    try:
-        hybrid_index.save(cache_dir)
-        log_message("api", f"Cached indices at {cache_dir}")
-    except Exception as exc:  # noqa: BLE001 - caching is best effort
-        log_message("api", f"Could not write index cache: {exc}")
-
-    return hybrid_index, len(chunked_corpus)
 
 
 def _build_generator(config, device):
@@ -115,7 +63,7 @@ async def lifespan(app: FastAPI):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     app.state.device = str(device)
 
-    if device.type != "cuda":
+    if device.type != "cuda" and config.generator_backend == "transformers":
         log_message("api", "WARNING: CUDA is not available. A 7B generator on CPU is extremely slow.")
 
     started_at = time.perf_counter()
@@ -125,7 +73,9 @@ async def lifespan(app: FastAPI):
     reranker = ClinicalReranker(config.reranker_model, device)
     generator = _build_generator(config, device)
 
-    hybrid_index, corpus_size = _load_hybrid_index(config, embedder)
+    loaded_index = load_or_build_index(config, embedder)
+    hybrid_index = loaded_index.index
+    corpus_size = loaded_index.chunk_count
 
     if config.persist_traces:
         os.makedirs(config.trace_dir, exist_ok=True)
@@ -141,6 +91,8 @@ async def lifespan(app: FastAPI):
         "corpus_chunks": corpus_size,
         "corpus_documents": len({chunk["doc_id"] for chunk in hybrid_index.corpus_mapping}),
         "corpus_limit": config.max_corpus_docs,
+        "corpus_format": config.corpus_format,
+        "index_from_cache": loaded_index.from_cache,
         "embedder": config.embedder_model,
         "reranker": config.reranker_model,
         "generator": generator.model_name,

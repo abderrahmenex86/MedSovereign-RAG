@@ -8,7 +8,7 @@ import faiss
 import numpy as np
 from rank_bm25 import BM25Okapi
 
-CACHE_VERSION = 3
+CACHE_VERSION = 4
 
 
 def chunk_text(text, chunk_size=300, overlap=50):
@@ -68,8 +68,16 @@ def parse_corpus(corpus_path, chunk_size=300, overlap=50):
                 {
                     "chunk_id": f"doc_{index}_chunk_{chunk_index}",
                     "doc_id": f"doc_{index}",
+                    "title": question_text.strip(),
                     "question": question_text.strip(),
                     "focus": focus_text.strip(),
+                    "source": "medquad",
+                    "published": "",
+                    "url": "",
+                    "license": "unknown",
+                    "section": "",
+                    "pmid": "",
+                    "meta": {},
                     "text": chunk,
                 }
             )
@@ -78,12 +86,15 @@ def parse_corpus(corpus_path, chunk_size=300, overlap=50):
 
 
 def build_index_text(chunk):
-    """Text used for retrieval: the question adds topical signal the answer lacks."""
-    question = chunk.get("question") or ""
+    """Text used for retrieval: title and section add topical signal."""
+    title = (chunk.get("title") or chunk.get("question") or "").strip()
+    section = (chunk.get("section") or "").strip()
     text = chunk.get("text") or ""
-    if not question:
+
+    prefix = "\n".join(part for part in (title, section) if part)
+    if not prefix:
         return text
-    return f"{question}\n{text}"
+    return f"{prefix}\n{text}"
 
 
 def _corpus_digest(corpus_path):
@@ -95,10 +106,13 @@ def _corpus_digest(corpus_path):
     return digest.hexdigest()
 
 
-def index_cache_key(corpus_path, chunk_size, overlap, embedder_model, max_documents=0):
+def index_cache_key(
+    corpus_path, chunk_size, overlap, embedder_model, max_documents=0, corpus_format="medquad"
+):
     corpus_hash = _corpus_digest(corpus_path)
     payload = (
-        f"v{CACHE_VERSION}:{corpus_hash}:{chunk_size}:{overlap}:{embedder_model}:{max_documents}"
+        f"v{CACHE_VERSION}:{corpus_hash}:{corpus_format}:{chunk_size}:"
+        f"{overlap}:{embedder_model}:{max_documents}"
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 

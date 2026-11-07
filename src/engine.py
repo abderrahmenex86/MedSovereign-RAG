@@ -75,11 +75,19 @@ def format_context(chunks):
     blocks = []
 
     for chunk in chunks:
-        question = chunk.get("question") or ""
-        header = f"Document {chunk['doc_id']}:"
-        if question:
-            header += f"\nQuestion: {question}"
-        blocks.append(f"{header}\nPassage: {chunk['text']}")
+        title = chunk.get("title") or chunk.get("question") or ""
+        source = chunk.get("source") or ""
+        published = chunk.get("published") or ""
+        section = chunk.get("section") or ""
+
+        descriptor = " | ".join(part for part in (source, published) if part)
+        header = f"[{chunk['doc_id']}] {descriptor}".strip()
+        if title:
+            header += f"\nTitle: {title}"
+        if section:
+            header += f"\nSection: {section}"
+
+        blocks.append(f"{header}\n{chunk['text']}")
 
     return "\n\n".join(blocks)
 
