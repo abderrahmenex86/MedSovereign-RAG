@@ -1,4 +1,4 @@
-import { ChevronRight, FileText, MessageSquare, Plus, Trash2, X } from 'lucide-react';
+import { ChevronRight, ExternalLink, FileText, MessageSquare, Plus, Trash2, X } from 'lucide-react';
 import { useChatStore } from '../store';
 
 export const LeftPanel = () => {
@@ -205,45 +205,105 @@ export const SidePanel = () => {
                                 No sources loaded.
                             </p>
                         :   <ul className='space-y-2'>
-                                {validSources.map((source, index) => (
-                                    <li
-                                        key={source.chunk_id || `${source.doc_id}-${index}`}
-                                        className='rounded border border-[#162236] bg-[#070b14] p-2.5'>
-                                        <details className='group'>
-                                            <summary className='flex cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-bold text-punch-red-300 select-none'>
-                                                <span className='flex min-w-0 items-center gap-1'>
-                                                    <FileText
-                                                        aria-hidden='true'
-                                                        className='h-3 w-3 shrink-0'
-                                                    />
-                                                    <span className='truncate'>
-                                                        {source.question || source.doc_id}
-                                                    </span>
-                                                </span>
-                                                <span className='flex shrink-0 items-center gap-1 text-platinum-400'>
-                                                    <span className='text-[10px] font-normal'>
-                                                        {source.doc_id}
+                                {validSources.map((source, index) => {
+                                    const title =
+                                        source.title ||
+                                        source.question ||
+                                        source.doc_id;
+                                    const year = (
+                                        source.published || ''
+                                    ).slice(0, 4);
+
+                                    return (
+                                        <li
+                                            key={
+                                                source.chunk_id ||
+                                                `${source.doc_id}-${index}`
+                                            }
+                                            className='rounded border border-[#162236] bg-[#070b14] p-2.5'>
+                                            <details className='group'>
+                                                <summary className='flex cursor-pointer list-none items-start justify-between gap-2 text-[11px] font-bold text-punch-red-300 select-none'>
+                                                    <span className='flex min-w-0 items-start gap-1'>
+                                                        <FileText
+                                                            aria-hidden='true'
+                                                            className='mt-0.5 h-3 w-3 shrink-0'
+                                                        />
+                                                        <span className='min-w-0'>
+                                                            <span className='block truncate'>
+                                                                {title}
+                                                            </span>
+                                                            <span className='mt-0.5 flex flex-wrap items-center gap-x-1 text-[10px] font-normal text-platinum-400'>
+                                                                {source.source && (
+                                                                    <span className='uppercase tracking-wide'>
+                                                                        {
+                                                                            source.source
+                                                                        }
+                                                                    </span>
+                                                                )}
+                                                                {year && (
+                                                                    <span>
+                                                                        · {year}
+                                                                    </span>
+                                                                )}
+                                                                {source.doc_id && (
+                                                                    <span className='font-mono'>
+                                                                        ·{' '}
+                                                                        {
+                                                                            source.doc_id
+                                                                        }
+                                                                    </span>
+                                                                )}
+                                                            </span>
+                                                        </span>
                                                     </span>
                                                     <span
                                                         aria-hidden='true'
-                                                        className='transition-transform group-open:rotate-90'>
+                                                        className='mt-0.5 shrink-0 text-platinum-400 transition-transform group-open:rotate-90'>
                                                         ►
                                                     </span>
-                                                </span>
-                                            </summary>
-                                            <p className='mt-2 border-t border-[#162236] pt-2 text-[11px] leading-relaxed text-platinum-300'>
-                                                {source.text}
-                                            </p>
-                                            {typeof source.rerank_score ===
-                                                'number' && (
-                                                <p className='mt-1 text-[10px] text-platinum-500'>
-                                                    rerank score:{' '}
-                                                    {source.rerank_score.toFixed(2)}
+                                                </summary>
+
+                                                {source.section && (
+                                                    <p className='mt-2 text-[10px] font-semibold uppercase tracking-wide text-platinum-400'>
+                                                        {source.section}
+                                                    </p>
+                                                )}
+
+                                                <p className='mt-2 border-t border-[#162236] pt-2 text-[11px] leading-relaxed text-platinum-300'>
+                                                    {source.text}
                                                 </p>
-                                            )}
-                                        </details>
-                                    </li>
-                                ))}
+
+                                                <div className='mt-2 flex items-center justify-between text-[10px] text-platinum-500'>
+                                                    {typeof source.rerank_score ===
+                                                    'number' ? (
+                                                        <span>
+                                                            rerank score:{' '}
+                                                            {source.rerank_score.toFixed(
+                                                                2
+                                                            )}
+                                                        </span>
+                                                    ) : (
+                                                        <span />
+                                                    )}
+
+                                                    {source.url && (
+                                                        <a
+                                                            href={source.url}
+                                                            target='_blank'
+                                                            rel='noreferrer noopener'
+                                                            className='inline-flex items-center gap-1 text-punch-red-300 underline underline-offset-2 hover:text-punch-red-200'>
+                                                            <ExternalLink
+                                                                aria-hidden='true'
+                                                                className='h-3 w-3'
+                                                            />
+                                                            Open source
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            </details>
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         }
                     </section>

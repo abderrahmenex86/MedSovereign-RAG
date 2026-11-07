@@ -339,9 +339,9 @@ export const ChatInterface = () => {
                                 Ask a clinical question
                             </p>
                             <p className='mt-2 text-xs leading-relaxed text-platinum-300 md:text-sm'>
-                                Answers are grounded in the MedQuad corpus. Try
-                                “What are the symptoms and treatments for acute
-                                bronchitis?”
+                                Answers are grounded in the retrieved corpus.
+                                Try “What are the symptoms and treatments
+                                for acute bronchitis?”
                             </p>
                         </div>
                     )}
@@ -459,7 +459,7 @@ export const ChatInterface = () => {
                     </form>
 
                     <p className='mx-auto mt-2 max-w-4xl text-center text-[10px] text-platinum-400'>
-                        Grounded in MedQuad. Not a medical device and not
+                        Retrieval-grounded. Not a medical device and not
                         validated for clinical use.
                     </p>
                 </footer>
