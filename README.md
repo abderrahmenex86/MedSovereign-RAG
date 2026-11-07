@@ -89,8 +89,18 @@ The first request loads the model into memory (about a minute on a laptop CPU).
 not pay that cost again. `medgemma:4b` follows the grounding and judge prompts
 reasonably well, but a 4B model is a weaker auditor than Zephyr-7B.
 On a CPU-only laptop (Ryzen 5 4650U, 14 GB RAM) a verified answer took about 62
-seconds, including retrieval and the judge. Building the full 21k-chunk index on
-CPU is a one-time cost that can take tens of minutes; it is cached afterwards.
+seconds, including retrieval and the judge. Embedding the full 21k-chunk corpus
+on that CPU takes roughly two hours; the result is cached afterwards. For a
+quick demo, build a smaller index:
+
+```bash
+MAX_CORPUS_DOCS=1000 GENERATOR_BACKEND=ollama python main.py
+```
+
+That indexes about 1,300 chunks in 8–10 minutes. The cache key includes
+`MAX_CORPUS_DOCS`, so full and subset indices do not collide. You can also build
+the full index once on a GPU machine and copy `artifacts/index_cache/` to the
+CPU host.
 
 ## Configuration
 
@@ -109,6 +119,7 @@ Every setting has an environment variable; see `.env.example` for the full list.
 | `OLLAMA_THINK` | unset | Set `false` for thinking models such as Qwen3 |
 | `OLLAMA_REQUEST_TIMEOUT` | `600` | Read timeout in seconds |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `300` / `50` | Word-level chunking |
+| `MAX_CORPUS_DOCS` | `0` | Index only the first N documents (`0` = all) |
 | `MAX_CONCURRENT_REQUESTS` | `1` | Serialize jobs on one GPU |
 | `PERSIST_TRACES` | `true` | Write traces to `TRACE_DIR` |
 | `TRACE_RETENTION` | `200` | Number of trace files kept |

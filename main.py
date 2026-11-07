@@ -13,7 +13,13 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.config import Config
-from src.data import HybridIndex, build_index_text, index_cache_key, parse_corpus
+from src.data import (
+    HybridIndex,
+    build_index_text,
+    index_cache_key,
+    limit_corpus,
+    parse_corpus,
+)
 from src.engine import execute_agentic_rag
 from src.models import ClinicalEmbedder, ClinicalGenerator, ClinicalReranker, OllamaGenerator
 from src.utils import configure_logging, log_message, set_determinism
@@ -42,6 +48,7 @@ def _load_hybrid_index(config, embedder):
         )
 
     chunked_corpus = parse_corpus(config.corpus_path, config.chunk_size, config.chunk_overlap)
+    chunked_corpus = limit_corpus(chunked_corpus, config.max_corpus_docs)
 
     if not chunked_corpus:
         raise ValueError(
@@ -53,6 +60,7 @@ def _load_hybrid_index(config, embedder):
         config.chunk_size,
         config.chunk_overlap,
         config.embedder_model,
+        config.max_corpus_docs,
     )
     cache_dir = config.cache_dir / cache_key
 
@@ -132,6 +140,7 @@ async def lifespan(app: FastAPI):
         "device": str(device),
         "corpus_chunks": corpus_size,
         "corpus_documents": len({chunk["doc_id"] for chunk in hybrid_index.corpus_mapping}),
+        "corpus_limit": config.max_corpus_docs,
         "embedder": config.embedder_model,
         "reranker": config.reranker_model,
         "generator": generator.model_name,

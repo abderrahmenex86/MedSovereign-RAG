@@ -89,6 +89,7 @@ class Config:
     trace_dir: Path
     chunk_size: int
     chunk_overlap: int
+    max_corpus_docs: int
     max_concurrent_requests: int
     persist_traces: bool
     trace_retention: int
@@ -132,6 +133,7 @@ class Config:
             trace_dir=Path(_env_str("TRACE_DIR", "artifacts/production_api")),
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
+            max_corpus_docs=_env_int("MAX_CORPUS_DOCS", 0, minimum=0),
             max_concurrent_requests=_env_int("MAX_CONCURRENT_REQUESTS", 1, minimum=1),
             persist_traces=_env_bool("PERSIST_TRACES", True),
             trace_retention=_env_int("TRACE_RETENTION", 200, minimum=1),

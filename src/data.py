@@ -86,13 +86,36 @@ def build_index_text(chunk):
     return f"{question}\n{text}"
 
 
-def index_cache_key(corpus_path, chunk_size, overlap, embedder_model):
+def index_cache_key(corpus_path, chunk_size, overlap, embedder_model, max_documents=0):
     corpus_stat = os.stat(corpus_path)
     payload = (
         f"v{CACHE_VERSION}:{Path(corpus_path).name}:{corpus_stat.st_size}:"
-        f"{int(corpus_stat.st_mtime)}:{chunk_size}:{overlap}:{embedder_model}"
+        f"{int(corpus_stat.st_mtime)}:{chunk_size}:{overlap}:{embedder_model}:{max_documents}"
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
+def limit_corpus(chunks, max_documents):
+    """Keep the first `max_documents` source documents (0 keeps everything).
+
+    parse_corpus emits chunks grouped by document, so stopping at the first
+    chunk of the next document is safe.
+    """
+    if max_documents <= 0:
+        return chunks
+
+    selected = []
+    seen_documents: set[str] = set()
+
+    for chunk in chunks:
+        document_id = chunk["doc_id"]
+        if document_id not in seen_documents:
+            if len(seen_documents) >= max_documents:
+                break
+            seen_documents.add(document_id)
+        selected.append(chunk)
+
+    return selected
 
 
 class HybridIndex:

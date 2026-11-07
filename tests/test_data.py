@@ -9,6 +9,7 @@ from src.data import (
     build_index_text,
     chunk_text,
     index_cache_key,
+    limit_corpus,
     parse_corpus,
 )
 
@@ -121,5 +122,20 @@ def test_index_cache_key_changes_with_chunking(tmp_path):
 
     first = index_cache_key(corpus_path, 300, 50, "model-a")
     second = index_cache_key(corpus_path, 200, 50, "model-a")
+    limited = index_cache_key(corpus_path, 300, 50, "model-a", max_documents=500)
 
     assert first != second
+    assert first != limited
+
+
+def test_limit_corpus_keeps_whole_documents():
+    chunks = [
+        {"doc_id": "doc_0", "text": "a"},
+        {"doc_id": "doc_0", "text": "b"},
+        {"doc_id": "doc_1", "text": "c"},
+        {"doc_id": "doc_2", "text": "d"},
+    ]
+
+    assert limit_corpus(chunks, 2) == chunks[:3]
+    assert limit_corpus(chunks, 0) == chunks
+    assert limit_corpus(chunks, 10) == chunks
