@@ -4,8 +4,6 @@ MedSovereign-RAG answers clinical questions by retrieving biomedical literature,
 
 https://github.com/user-attachments/assets/f4c9eb8c-78a9-457f-a41d-8f1c1cfdc127
 
-_The 40.4-second silent demo follows the seeded acute-bronchitis conversation from question to judge PASS, then a follow-up and the dark-mode reveal._
-
 ## Contents
 
 - [What it does](#what-it-does)
